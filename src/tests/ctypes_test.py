@@ -1,6 +1,8 @@
 import flet as ft
 import ctypes, threading
 
+from core.test_handler import setup_test
+
 def trigger_fake_error():
     """Spawns a native Windows error dialog."""
     # The message and title
@@ -17,12 +19,9 @@ def trigger_fake_error():
         daemon=True
     ).start()
 
-async def test(page: ft.Page):
-    page.title = "Error Popup Test"
-    page.vertical_alignment = ft.MainAxisAlignment.CENTER
-    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-    await page.window.center()
-    
+
+@setup_test("Error Popup Test")
+def test(page: ft.Page):
     async def trigger_popup(e: ft.Event[ft.Button]):
         if isinstance(e.page, ft.Page):
             e.page.run_thread(trigger_fake_error)
@@ -30,4 +29,4 @@ async def test(page: ft.Page):
     page.add(ft.Button("Click for popup!", on_click=trigger_popup))
 
 if __name__ == "__main__":
-    ft.run(test)
+    ft.run(test, assets_dir="../assets")

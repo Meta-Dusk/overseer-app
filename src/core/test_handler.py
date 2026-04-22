@@ -4,6 +4,8 @@ from functools import wraps
 from typing import Callable
 
 from core.setup import OptionalCallableKeyboardEvent, setup_page
+from components.appbar import PresetAppBar
+from components.buttons import ExitButton
 
 def setup_test(title: str = "Test", *, add_test_kb_events: bool = True):
     """
@@ -31,6 +33,7 @@ def setup_test(title: str = "Test", *, add_test_kb_events: bool = True):
         async def wrapper_fn(page: ft.Page):
             # Page configurations and stuff
             setup_page(page, title)
+            page.appbar = PresetAppBar(title="Test", actions=[ExitButton()])
             
             await page.window.center()
             

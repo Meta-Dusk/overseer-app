@@ -12,7 +12,12 @@ def test(page: ft.Page) -> None:
         content=DefaultContainer(
             content=CenteredColumn(
                 controls=[
-                    ft.Button("Play SFX", on_click=lambda _: audio_manager.play_sfx(Assets.audio.sfx.lightning)),
+                    ft.Button(
+                        "Play SFX",
+                        on_click=lambda _: audio_manager.play_sfx(
+                            Assets.audio.sfx.lightning
+                        )
+                    ),
                     ft.Button("Play Music")
                 ]
             ),
