@@ -1,0 +1,28 @@
+from enum import Enum
+from dataclasses import dataclass, field
+
+class AppType(Enum):
+    DISTRACTING = "distracting"
+    NEUTRAL = "neutral"
+    PRODUCTIVE = "productive"
+
+class WindowInfo(Enum):
+    NAME = "name"
+    CLASS_NAME = "class_name"
+    PROCESS_ID = "process_id"
+    PROCESS_NAME = "process_name"
+
+@dataclass
+class Productive:
+    apps: list[str] = field(default_factory=list)
+    keywords: list[str] = field(default_factory=list)
+
+@dataclass
+class Distracting:
+    apps: list[str] = field(default_factory=list)
+    keywords: list[str] = field(default_factory=list)
+
+@dataclass
+class WindowNames:
+    productive: Productive = field(default_factory=Productive)
+    distracting: Distracting = field(default_factory=Distracting)

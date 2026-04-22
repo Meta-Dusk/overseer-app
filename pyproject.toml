@@ -1,0 +1,71 @@
+[project]
+name = "Overseer"
+version = "0.1.0"
+description = "An App for Monitoring Your Activity, and Stuff..."
+readme = "README.md"
+requires-python = ">=3.13"
+authors = [{ name = "MetaDusk", email = "andredcxxv@gmail.com" }]
+license = { text = "AGPL-3.0" }
+
+dependencies = [
+    "uiautomation>=2.0.29",
+    "psutil>=7.1.0",
+    "pywin32>=311",
+    "flet>=0.84.0",
+    "flet-audio>=0.84.0",
+]
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.16.0",
+    "flet-cli>=0.84.0",
+    "flet-desktop>=0.84.0",
+    "flet-web>=0.84.0",
+    "tomlkit>=0.14.0",
+]
+
+[tool.flet]
+org = "com.metadusk"
+product = "Overseer"
+company = "MetaDusk Inc."
+copyright = "Copyright (C) 2025 MetaDusk"
+compile_app = true
+compile_packages = true
+cleanup_on_compile = true
+build_number = 1
+
+[tool.flet.assets]
+include = ["assets"]
+
+[tool.flet.splash]
+color = "#ffffff"
+dark_color = "#333333"
+
+[tool.flet.app]
+path = "src"
+exclude = [
+    "tests",
+    "tests/**",
+    "__pycache__",
+    "*.pyc",
+    "*.egg-info",
+    "*.egg-info/**",
+]
+
+[tool.flet.app.boot_screen]
+show = true
+message = "Booting Up... Please wait."
+
+[tool.flet.app.startup_screen]
+show = true
+message = "Loading... Please wait."
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
