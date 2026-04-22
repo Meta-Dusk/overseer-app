@@ -7,7 +7,7 @@ from components.layouts import CenteredColumn, DefaultWindowDragArea, DefaultCon
 
 @setup_test("Audio Test")
 def test(page: ft.Page) -> None:
-    audio_manager = AudioManager(page, debug=True, sfx_volume=1.0)
+    audio_manager = AudioManager(page, debug=True)
     form = DefaultWindowDragArea(
         content=DefaultContainer(
             content=CenteredColumn(
