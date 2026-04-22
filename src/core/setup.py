@@ -4,7 +4,7 @@ from typing import Optional
 WINDOW_WIDTH: Optional[ft.Number] = 550
 WINDOW_HEIGHT: Optional[ft.Number] = 400
 
-def before_main_ui(page: ft.Page):
+def setup_page(page: ft.Page):
     """Use for the `before_main` in `run()`."""
     page.title = "The Overseer"
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
