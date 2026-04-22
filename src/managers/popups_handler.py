@@ -1,14 +1,54 @@
 import flet as ft
-import random, asyncio
+import random, asyncio, ctypes
 
 from managers.verbose_dialogs import WinPositionedMessageBox
 from managers.error_factory import ErrorFactory
 from managers.monitor import MonitorManager
 
-class PopupsHandler:
+# Win32 Constants for Z-Order
+HWND_NOTOPMOST = -2
+HWND_TOPMOST = -1
+HWND_BOTTOM = 1
+SWP_NOMOVE = 0x0002
+SWP_NOSIZE = 0x0001
+SWP_SHOWWINDOW = 0x0040
+
+class HorrorEventsHandler:
     def __init__(self, page: ft.Page, *, app_title: str = "The Overseer"):
         self.page = page
         self.app_title = app_title
+        self.user32 = ctypes.windll.user32
+    
+    async def trigger_z_flicker(self, count: int = 5, speed: float = 0.05) -> None:
+        """
+        Rapidly sends the window to the back and front.
+        """
+        hwnd = self.user32.FindWindowW(None, self.app_title)
+        if not hwnd: return
+
+        for _ in range(count):
+            # Send to the very bottom of the window stack
+            self.user32.SetWindowPos(
+                hwnd, HWND_BOTTOM, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE
+            )
+            await asyncio.sleep(speed)
+
+            # Force it back to the absolute top
+            self.user32.SetWindowPos(
+                hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW
+            )
+            
+            await asyncio.sleep(speed)
+        
+        self.user32.SetWindowPos(
+            hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW
+        )
+        
+        self.page.window.always_on_top = False
+        self.page.window.update()
 
     def spawn_random_mb(self, intensity: int = 1) -> None:
         """Spawns a popup ONLY on the monitor where the app is currently located."""

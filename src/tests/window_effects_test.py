@@ -2,13 +2,13 @@ import flet as ft
 
 from core.test_handler import setup_test
 from components.layouts import DefaultContainer, CenteredColumn, DefaultWindowDragArea
-from managers.screen_effects import ScreenEffectsManager
+from managers.window_effects import WindowEffectsManager
 
 APP_TITLE = "Native Dialog Test"
 
 @setup_test(APP_TITLE)
 def test(page: ft.Page) -> None:
-    screen_effects = ScreenEffectsManager(page)
+    screen_effects = WindowEffectsManager(page)
     
     controls: list[ft.Control] = [
         ft.Button(

@@ -1,7 +1,7 @@
 import flet as ft
 import asyncio, random
 
-class ScreenEffectsManager:
+class WindowEffectsManager:
     def __init__(self, page: ft.Page):
         self.page = page
 
