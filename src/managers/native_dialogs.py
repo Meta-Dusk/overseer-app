@@ -24,6 +24,9 @@ class WinMBStyleFlags(IntEnum):
     
     MB_SETFOREGROUND = 0x00010000
     """Brings the window to the front."""
+    
+    MB_TOPMOST = 0x00040000
+    """Forces it above even other 'Always on Top' windows."""
 
 class WinMessageBox:
     """Handles triggering authentic Windows system dialogs without blocking the UI."""
@@ -70,7 +73,7 @@ class WinTaskDialog:
     
     @classmethod
     def _task_dialog(
-        cls, hwnd: int = 0, hinstance = None, title: str = "Window Security",
+        cls, hwnd: int = 0, hinstance = None, title: str = "",
         main_instruction: str = "", content: str = "",
         common_buttons: int = 0x0001, icon: WinTaskIcon = WinTaskIcon.SHIELD,
         out_button_id = None

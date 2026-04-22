@@ -7,7 +7,11 @@ from core.setup import OptionalCallableKeyboardEvent, setup_page
 from components.appbar import PresetAppBar
 from components.buttons import ExitButton
 
-def setup_test(title: str = "Test", *, add_test_kb_events: bool = True):
+def setup_test(
+    title: str = "Test", *,
+    add_test_kb_events: bool = True,
+    add_debug_hooks: bool = False
+):
     """
     Wrapper that applies the expected configurations for the page during tests. The function must return
     `Callable[[ft.KeyboardEvent], None]` if you're going to attach keyboard events, only if `add_test_kb_events`
@@ -32,7 +36,7 @@ def setup_test(title: str = "Test", *, add_test_kb_events: bool = True):
         @wraps(page_fn)
         async def wrapper_fn(page: ft.Page):
             # Page configurations and stuff
-            setup_page(page, title)
+            setup_page(page, title, add_debug_hooks=add_debug_hooks)
             page.appbar = PresetAppBar(title="Test", actions=[ExitButton()])
             
             await page.window.center()

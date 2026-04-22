@@ -6,7 +6,7 @@ OptionalCallableKeyboardEvent: TypeAlias = Optional[Callable[[ft.KeyboardEvent],
 WINDOW_WIDTH: Optional[ft.Number] = 550
 WINDOW_HEIGHT: Optional[ft.Number] = 400
 
-def setup_page(page: ft.Page, title: str = "The Overseer"):
+def setup_page(page: ft.Page, title: str = "The Overseer", *, add_debug_hooks: bool = True):
     """Use for the `before_main` in `run()`."""
     page.title = title
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
@@ -23,8 +23,9 @@ def setup_page(page: ft.Page, title: str = "The Overseer"):
     page.window.prevent_close = False
     page.window.maximized = False
     
-    page.on_close = lambda e: print(e)
-    page.on_resize = lambda e: print(e)
-    page.window.on_event = lambda e: print(e)
+    if add_debug_hooks:
+        page.on_close = lambda e: print(e)
+        page.on_resize = lambda e: print(e)
+        page.window.on_event = lambda e: print(e)
     page.update()
     
