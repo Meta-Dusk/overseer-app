@@ -18,8 +18,10 @@ class DefaultWindowDragArea(ft.WindowDragArea):
         self.expand = True
 
 @ft.control
-class PresetWindowDragArea(DefaultWindowDragArea):
+class PresetWindowDragArea(ft.WindowDragArea):
     def init(self):
+        self.maximizable = False
+        self.expand = True
         self.opacity = 0
         self.offset = ft.Offset(0, -1)
         self.animate_opacity = ft.Animation(1000, ft.AnimationCurve.EASE_IN_OUT)

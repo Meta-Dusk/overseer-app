@@ -5,7 +5,7 @@ from managers.loader import load_app_lists, reset_config, app_log, LogType
 from managers.window import WindowHelperManager
 from core.utilities import safe_sleep, format_time
 from core.data_types import WindowInfo, AppType
-from components.layouts import PresetColumn, PresetWindowDragArea
+from components.layouts import PresetColumn, PresetWindowDragArea, DefaultContainer
 from components.appbar import PresetAppBar
 from components.buttons import ExitButton, MinimizeButton, PresetPopupMenuButton, \
     SimplePopupMenuItem, FullscreenButton, ThemeToggleButton
@@ -138,11 +138,10 @@ class App:
                 self.category_text,
             ]
             self.form = PresetWindowDragArea(
-                ft.Container(
+                DefaultContainer(
                     content=PresetColumn(form_controls),
-                    padding=16, border_radius=16, expand=True,
+                    padding=16, border_radius=16,
                     bgcolor=ft.Colors.SURFACE_CONTAINER,
-                    alignment=ft.Alignment.CENTER,
                 )
             )
             

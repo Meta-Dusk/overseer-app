@@ -3,18 +3,30 @@ from enum import IntEnum
 
 class WinMBIcon(IntEnum):
     """Windows MessageBox Icon constants."""
-    ERROR = 0x10        # Red 'X' circle
-    QUESTION = 0x20     # Blue '?' circle
-    WARNING = 0x30      # Yellow '!' triangle
-    INFO = 0x40         # Blue 'i' circle
+    
+    ERROR = 0x10
+    """Red 'X' circle."""
+    
+    QUESTION = 0x20
+    """Blue '?' circle."""
+    
+    WARNING = 0x30
+    """Yellow '!' triangle."""
+    
+    INFO = 0x40
+    """Blue 'i' circle."""
+
+class WinMBStyleFlags(IntEnum):
+    MB_OK = 0x00000000
+    
+    MB_SYSTEMMODAL = 0x00001000
+    """Forces the window to stay on top of everything."""
+    
+    MB_SETFOREGROUND = 0x00010000
+    """Brings the window to the front."""
 
 class WinMessageBox:
     """Handles triggering authentic Windows system dialogs without blocking the UI."""
-    
-    # Common Style Flags
-    MB_OK = 0x00000000
-    MB_SYSTEMMODAL = 0x00001000  # Forces the window to stay on top of everything
-    MB_SETFOREGROUND = 0x00010000 # Brings the window to the front
 
     @classmethod
     def show_error(cls, message: str, *, title: str = "System Error"):
@@ -30,7 +42,7 @@ class WinMessageBox:
     def spawn(cls, title: str, message: str, icon: WinMBIcon = WinMBIcon.ERROR):
         """Returns a callable. Run with `page.run_thread()`."""
         # Combine the icon with Modal and Foreground flags
-        style = int(icon) | cls.MB_SYSTEMMODAL | cls.MB_SETFOREGROUND
+        style = icon | WinMBStyleFlags.MB_SYSTEMMODAL | WinMBStyleFlags.MB_SETFOREGROUND
 
         def _task():
             ctypes.windll.user32.MessageBoxW(0, message, title, style)
@@ -40,10 +52,18 @@ class WinMessageBox:
 
 class WinTaskIcon(IntEnum):
     """Modern TaskDialog Icon Resource IDs."""
-    WARNING = 65535      # Yellow '!' (TD_WARNING_ICON)
-    ERROR = 65534        # Red 'X' (TD_ERROR_ICON)
-    INFO = 65533         # Blue 'i' (TD_INFORMATION_ICON)
-    SHIELD = 65532       # 🛡️ UAC Shield (TD_SHIELD_ICON) - Perfect for malware!
+    
+    WARNING = 65535
+    """Yellow '!' (TD_WARNING_ICON)"""
+    
+    ERROR = 65534
+    """Red 'X' (TD_ERROR_ICON)"""
+    
+    INFO = 65533
+    """Blue 'i' (TD_INFORMATION_ICON)"""
+    
+    SHIELD = 65532
+    """🛡️ UAC Shield (TD_SHIELD_ICON)"""
 
 class WinTaskDialog:
     """Handles triggering modern Windows TaskDialogs without blocking the UI."""
