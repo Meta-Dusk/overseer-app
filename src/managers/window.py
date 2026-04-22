@@ -1,6 +1,6 @@
 import json, subprocess, threading, queue, time, os
 from pathlib import Path
-from typing import Optional, Any, IO
+from typing import Optional, Any
 
 from core.data_types import WindowInfo
 

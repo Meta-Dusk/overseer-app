@@ -160,6 +160,7 @@ class App:
         except Exception as e:
             app_log(f"[App] Error attempting App.build(): {str(e)}", LogType.WARNING)
             return False
+        app_log(f"[App] Finished App.build()")
         return True
     
     # | Event Handlers |

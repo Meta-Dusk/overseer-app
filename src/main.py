@@ -1,4 +1,5 @@
 import flet as ft
+
 from core.setup import setup_page
 from app import App
 

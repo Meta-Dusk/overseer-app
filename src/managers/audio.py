@@ -25,6 +25,7 @@ class AudioManager:
         self._sfx_cooldowns: dict[str, float] = {}
         self._sfx_instances: list[fta.Audio] = []
         self.music_instance: Optional[fta.Audio] = None
+        self._debug_msg("Finished setup")
     
     @property
     def sfx_volume(self) -> float:
