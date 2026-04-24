@@ -11,7 +11,7 @@ async def safe_sleep(duration: float, stop_event: asyncio.Event) -> None:
     
 
 # Formatting
-def format_time(seconds: int) -> str:
+def format_time_str(seconds: int) -> str:
     """Format a duration in seconds into a human-readable string."""
     if seconds < 60:
         return f"{seconds}s"

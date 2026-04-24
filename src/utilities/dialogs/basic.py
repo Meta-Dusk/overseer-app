@@ -1,6 +1,25 @@
 import ctypes
 from enum import IntEnum
 
+class WinMBButtons(IntEnum):
+    """Button layout constants for MessageBoxW."""
+    OK = 0x00000000
+    OKCANCEL = 0x00000001
+    ABORTRETRYIGNORE = 0x00000002
+    YESNOCANCEL = 0x00000003
+    YESNO = 0x00000004
+    RETRYCANCEL = 0x00000005
+
+class WinMBResponse(IntEnum):
+    """Return values from MessageBoxW."""
+    OK = 1
+    CANCEL = 2
+    ABORT = 3
+    RETRY = 4
+    IGNORE = 5
+    YES = 6
+    NO = 7
+
 class WinMBIcon(IntEnum):
     """Windows MessageBox Icon constants."""
     
@@ -42,13 +61,21 @@ class WinMessageBox:
         return cls.spawn(title, message, WinMBIcon.WARNING)
 
     @classmethod
-    def spawn(cls, title: str, message: str, icon: WinMBIcon = WinMBIcon.ERROR):
+    def spawn(
+        cls, title: str, message: str, icon: WinMBIcon = WinMBIcon.ERROR,
+        buttons: WinMBButtons = WinMBButtons.OK
+    ):
         """Returns a callable. Run with `page.run_thread()`."""
         # Combine the icon with Modal and Foreground flags
-        style = icon | WinMBStyleFlags.MB_SYSTEMMODAL | WinMBStyleFlags.MB_SETFOREGROUND
+        style = (
+            icon | buttons |
+            WinMBStyleFlags.MB_SYSTEMMODAL |
+            WinMBStyleFlags.MB_SETFOREGROUND
+        )
 
         def _task():
-            ctypes.windll.user32.MessageBoxW(0, message, title, style)
+            # 0 is for the hWnd (0 = Desktop)
+            return ctypes.windll.user32.MessageBoxW(0, message, title, style)
         
         return _task
 
@@ -75,12 +102,12 @@ class WinTaskDialog:
     def _task_dialog(
         cls, hwnd: int = 0, hinstance = None, title: str = "",
         main_instruction: str = "", content: str = "",
-        common_buttons: int = 0x0001, icon: WinTaskIcon = WinTaskIcon.SHIELD,
+        buttons: int = 0x0001, icon: WinTaskIcon = WinTaskIcon.SHIELD,
         out_button_id = None
     ):
         return ctypes.windll.comctl32.TaskDialog(
             hwnd, hinstance, title, main_instruction,
-            content, common_buttons, icon, out_button_id
+            content, buttons, icon, out_button_id
         )
     
     @classmethod

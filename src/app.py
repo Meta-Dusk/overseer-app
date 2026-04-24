@@ -3,7 +3,7 @@ import asyncio
 
 from managers.loader import load_app_lists, reset_config, app_log, LogType
 from managers.window import WindowHelperManager
-from core.utilities import safe_sleep, format_time
+from core.utilities import safe_sleep, format_time_str
 from core.data_types import WindowInfo, AppType, UnusedEvent
 from components.layouts import PresetColumn, PresetWindowDragArea, DefaultContainer
 from components.appbar import PresetAppBar
@@ -114,14 +114,14 @@ class App:
             self.distractions_counter_text = ft.Text(
                 spans=[
                     ft.TextSpan("You Were Distracted for: "),
-                    ft.TextSpan(format_time(self.distraction_time))
+                    ft.TextSpan(format_time_str(self.distraction_time))
                 ],
                 size=16, color=ft.Colors.ERROR
             )
             self.productive_counter_text = ft.Text(
                 spans=[
                     ft.TextSpan("You Were Productive for: "),
-                    ft.TextSpan(format_time(self.productive_time))
+                    ft.TextSpan(format_time_str(self.productive_time))
                 ],
                 size=16, color=ft.Colors.PRIMARY
             )
@@ -208,9 +208,10 @@ class App:
             case AppType.PRODUCTIVE:
                 self.productive_time += 1
                 if self.productive_counter_text.spans and len(self.productive_counter_text.spans) > 0:
-                    self.productive_counter_text.spans[1].text = format_time(self.productive_time)
+                    time_value = format_time_str(self.productive_time)
+                    self.productive_counter_text.spans[1].text = time_value
                     self.productive_counter_text.update()
-                app_log(f"Incremented productive_time to: {format_time(self.productive_time)}")
+                    print(f"[App] Incremented productive_time to: {time_value}")
                 await safe_sleep(1, self.stop_event)
             
             case AppType.DISTRACTING:
@@ -224,9 +225,10 @@ class App:
                     self.page.window.update()
                 self.distraction_time += 1
                 if self.distractions_counter_text.spans and len(self.distractions_counter_text.spans) > 0:
-                    self.distractions_counter_text.spans[1].text = format_time(self.distraction_time)
+                    time_value = format_time_str(self.distraction_time)
+                    self.distractions_counter_text.spans[1].text = time_value
                     self.distractions_counter_text.update()
-                app_log(f"Incremented distraction_time to: {format_time(self.distraction_time)}")
+                    print(f"[App] Incremented distraction_time to: {time_value}")
                 await safe_sleep(1, self.stop_event)
                 
             case AppType.NEUTRAL | _:

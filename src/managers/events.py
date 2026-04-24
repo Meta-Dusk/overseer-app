@@ -1,5 +1,6 @@
 import flet as ft
 import random, asyncio, ctypes
+from datetime import datetime
 
 from utilities.dialogs.verbose import WinPositionedMessageBox
 from utilities.message_factory import ErrorMessagesFactory
@@ -21,32 +22,37 @@ class EventsManager:
         self.app_title = app_title
         self.user32 = ctypes.windll.user32
     
+    @property
+    def get_timestamp(self) -> str:
+        """Returns a formatted timestamp of: '%H%M%S'."""
+        return datetime.now().strftime("%H%M%S")
+    
     async def trigger_z_flicker(self, count: int = 5, speed: float = 0.05) -> None:
         """Rapidly sends the window to the back and front."""
         hwnd = self.user32.FindWindowW(None, self.app_title)
         if not hwnd: return
-
-        for _ in range(count):
-            # Send to the very bottom of the window stack
+        
+        def send_to_back() -> None:
+            """Send to the very bottom of the window stack."""
             self.user32.SetWindowPos(
                 hwnd, HWND_BOTTOM, 0, 0, 0, 0,
                 SWP_NOMOVE | SWP_NOSIZE
             )
-            await asyncio.sleep(speed)
-
-            # Force it back to the absolute top
+        
+        def send_to_front() -> None:
+            """Send to the very top of the window stack."""
             self.user32.SetWindowPos(
                 hwnd, HWND_TOPMOST, 0, 0, 0, 0,
                 SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW
             )
-            
+        
+        for _ in range(count):
+            send_to_back()
+            await asyncio.sleep(speed)
+            send_to_front()
             await asyncio.sleep(speed)
         
-        self.user32.SetWindowPos(
-            hwnd, HWND_TOPMOST, 0, 0, 0, 0,
-            SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW
-        )
-        
+        send_to_front()
         self.page.window.always_on_top = False
         self.page.window.update()
 
@@ -85,11 +91,35 @@ class EventsManager:
             "FOCUS IS MANDATORY.",
             "WHY IS YOUTUBE OPEN?",
             "THE OVERSEER IS DISPLEASED.",
-            "WHY ARE YOU NOT DOING YOUR ASSESSMENTS?"
+            "WHY ARE YOU NOT DOING YOUR ASSESSMENTS?",
+            "I CAN SEE YOU."
         ]
         
-        for i in range(count):
-            filename = f"OVERSEER_ALERT_{i}.txt"
+        for _ in range(count):
+            filename = f"{self.get_timestamp}.overseer"
             msg = random.choice(messages)
             DesktopManager.create_desktop_file(filename, msg, auto_open=auto_open)
             await asyncio.sleep(0.2)
+    
+    async def trigger_text_haunting(self) -> None:
+        """A multi-stage event that manipulates a text file."""
+        messages = [
+            "Why is YouTube still open?",
+            "Focus on your assessments.",
+            "I'm watching you."
+        ]
+        msg = random.choice(messages)
+        
+        def on_finish(success: bool) -> None:
+            if not success: return
+            self.page.window.minimized = False
+            self.page.window.update()
+        
+        # await self.trigger_z_flicker(count=3)
+        self.page.window.minimized = True
+        self.page.window.update()
+        self.page.run_thread(
+            lambda: DesktopManager.create_and_possess(
+                f"\n\n{msg}", on_complete=on_finish
+            )
+        )
