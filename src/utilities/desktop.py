@@ -102,3 +102,8 @@ class DesktopManager:
                 cls.set_normal_attr(str(file))
                 file.unlink()
             except Exception: pass
+    
+    @classmethod
+    def set_wallpaper(cls, path: str):
+        # SPI_SETDESKWALLPAPER = 20
+        ctypes.windll.user32.SystemParametersInfoW(20, 0, path, 3)

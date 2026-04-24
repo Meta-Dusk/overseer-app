@@ -100,7 +100,7 @@ class EventsManager:
             filename = f"{self.get_timestamp}.overseer"
             msg = random.choice(messages)
             DesktopManager.create_desktop_file(filename, msg, auto_open=auto_open)
-            await asyncio.sleep(0.2)
+            if count > 1: await asyncio.sleep(0.2)
     
     async def trigger_text_haunting(self) -> None:
         """A multi-stage event that manipulates a text file."""
