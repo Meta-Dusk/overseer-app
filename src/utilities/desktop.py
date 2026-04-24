@@ -55,7 +55,10 @@ class DesktopManager:
             
             cls.set_read_only(str(file_path))
             os.startfile(file_path)
-            GhostWriter.possess_notepad(filename, ghost_msg)
+            GhostWriter.possess_notepad(
+                filename, ghost_msg,
+                hotkeys_on_finish=['enter']
+            )
             
             if on_complete: on_complete(True)
 

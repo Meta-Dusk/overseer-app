@@ -28,5 +28,4 @@ def test(page: ft.Page):
     
     page.add(ft.Button("Click for popup!", on_click=trigger_popup))
 
-if __name__ == "__main__":
-    ft.run(test, assets_dir="../assets")
+ft.run(test, assets_dir="../assets")

@@ -38,6 +38,4 @@ def test() -> None:
 
     print("🎉 Test complete! You can close this window safely.")
 
-
-if __name__ == "__main__":
-    test()
+test()

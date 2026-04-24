@@ -4,35 +4,38 @@ import random, asyncio
 from core.test_handler import setup_test
 from core.data_types import UnusedEvent
 from components.layouts import DefaultContainer, CenteredColumn, DefaultWindowDragArea
-from utilities.dialogs.basic import WinTaskDialog, WinMessageBox, WinMBIcon
+from utilities.dialogs.basic import WinTaskDialog, WinTaskIcon, WinMessageBox, WinMBIcon
 from utilities.dialogs.verbose import WinPositionedMessageBox
 from utilities.screen_color import ScreenColorManager
 from utilities.desktop import DesktopManager
+from utilities.window_effects import WindowEffectsManager
 from managers.events import EventsManager
 from managers.narrator import NativeNarrator
 
 APP_TITLE = "Native Dialog Test"
 
-async def trigger_pos_win_popup(page: ft.Page):
-    # Randomly scatter errors across the screen
-    random_x = random.randint(100, 1500)
-    random_y = random.randint(100, 800)
-    
-    pos_box = WinPositionedMessageBox(random_x, random_y)
-    task = pos_box.spawn(
-        title="SYSTEM CORRUPTION",
-        message="Memory error at offset 0x04F2. Data loss imminent.",
-        icon=WinMBIcon.ERROR
-    )
-    page.run_thread(task)
-
 @setup_test(APP_TITLE)
 def test(page: ft.Page) -> None:
     events = EventsManager(page, app_title=APP_TITLE)
     narrator = NativeNarrator(page)
+    window_effects = WindowEffectsManager(page)
+    
     initialized = ScreenColorManager.initialize()
     if not initialized:
         print("Warning: Monitor color effects not supported.")
+    
+    async def trigger_pos_win_popup() -> None:
+        # Randomly scatter errors across the screen
+        random_x = random.randint(100, 1500)
+        random_y = random.randint(100, 800)
+        
+        pos_box = WinPositionedMessageBox(random_x, random_y)
+        task = pos_box.spawn(
+            title="SYSTEM CORRUPTION",
+            message="Memory error at offset 0x04F2. Data loss imminent.",
+            icon=WinMBIcon.ERROR
+        )
+        page.run_thread(task)
     
     async def delayed_mouse_magnet(_: UnusedEvent) -> None:
         await asyncio.sleep(1)
@@ -44,9 +47,8 @@ def test(page: ft.Page) -> None:
             "Show ModernNativeDialog Example",
             on_click=lambda _: page.run_thread(
                 WinTaskDialog.spawn(
-                    instruction="Instruction",
-                    content="Small body text",
-                    title="I am the title",
+                    title="...",
+                    icon=WinTaskIcon.WARNING
                 )
             )
         ),
@@ -64,13 +66,13 @@ def test(page: ft.Page) -> None:
             "Show NativeDialog Example B",
             on_click=lambda _: page.run_thread(
                 WinMessageBox.show_error(
-                    "FATAL EXCEPTION: Page Fault in Nonpaged Area (productivity.sys)"
+                    "FATAL EXCEPTION: Page Fault in Nonpaged Area (overseer.sys)"
                 )
             )
         ),
         ft.Button(
             "Show WinPositionedMessageBox Example",
-            on_click=lambda _: page.run_task(trigger_pos_win_popup, page)
+            on_click=lambda _: page.run_task(trigger_pos_win_popup)
         ),
         ft.Divider(),
         ft.Button("Trigger Spam Event", on_click=lambda _: page.run_task(events.trigger_spam_event)),
@@ -87,6 +89,11 @@ def test(page: ft.Page) -> None:
         ft.Button("Apply Void", on_click=lambda _: ScreenColorManager.apply_void()),
         ft.Button("Apply Decay", on_click=lambda _: ScreenColorManager.apply_decay()),
         ft.Button("Reset Color Manipulation", on_click=lambda _: ScreenColorManager.reset()),
+        ft.Divider(),
+        ft.Button(
+            "Trigger Screen Shake",
+            on_click=lambda _: page.run_task(window_effects.trigger_screen_shake)
+        ),
         ft.Divider(),
         ft.Button(
             "Trigger File Manifestation",
@@ -115,5 +122,4 @@ def test(page: ft.Page) -> None:
     
     page.on_close = on_close
 
-if __name__ == "__main__":
-    ft.run(test, assets_dir="../assets")
+ft.run(test, assets_dir="../assets")

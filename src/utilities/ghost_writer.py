@@ -1,11 +1,15 @@
 import pyautogui
 import time, ctypes
+from typing import Optional
 
 class GhostWriter:
     """Possesses open windows to type messages."""
 
     @classmethod
-    def possess_notepad(cls, filename: str, message: str) -> None:
+    def possess_notepad(
+        cls, filename: str, message: str, *,
+        hotkeys_on_finish: Optional[list[str]] = None
+    ) -> None:
         """Finds the specific notepad file and types into it."""
         user32 = ctypes.windll.user32
         time.sleep(0.5) # Give Windows a moment to actually open the file
@@ -21,3 +25,6 @@ class GhostWriter:
         pyautogui.hotkey("end")
         time.sleep(0.1)
         pyautogui.write(message, interval=0.1)
+        if hotkeys_on_finish and len(hotkeys_on_finish) > 0:
+            time.sleep(0.1)
+            pyautogui.hotkey(*hotkeys_on_finish)

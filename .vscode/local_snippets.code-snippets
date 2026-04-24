@@ -1,0 +1,19 @@
+{
+	"Sample Test Snippet": {
+		"scope": "python",
+		"prefix": "newtest",
+		"body": [
+			"import flet as ft",
+			"",
+			"from core.test_handler import setup_test",
+			"",
+			"APP_TITLE = \"${1:AppTitle}\"",
+			"@setup_test(APP_TITLE)",
+			"def test(page: ft.Page) -> None:",
+			"\t${0:pass}",
+			"",
+			"ft.run(test, assets_dir=\"../assets\")",
+		],
+		"description": "Creates a test template for tests. Use in 'src/tests/' only."
+	}
+}

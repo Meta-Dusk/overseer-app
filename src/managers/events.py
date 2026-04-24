@@ -51,8 +51,9 @@ class EventsManager:
             await asyncio.sleep(speed)
             send_to_front()
             await asyncio.sleep(speed)
-        
-        send_to_front()
+            
+        self.page.window.always_on_top = True
+        self.page.window.update()
         self.page.window.always_on_top = False
         self.page.window.update()
 

@@ -25,5 +25,4 @@ def test(page: ft.Page) -> None:
     )
     page.add(form)
 
-if __name__ == "__main__":
-    ft.run(test, assets_dir="../assets")
+ft.run(test, assets_dir="../assets")

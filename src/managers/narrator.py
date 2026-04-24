@@ -1,23 +1,32 @@
 import flet as ft
-import time, ctypes
-from typing import TypeAlias, Any
+import time
+from typing import TypeAlias, Optional, TypedDict
 
-from utilities.dialogs.basic import WinMBIcon, WinMBStyleFlags, WinMBButtons, WinMessageBox
+from utilities.dialogs.basic import WinMBIcon, WinMBButtons, WinMBResponse, WinMessageBox
 
-NarrativeDict: TypeAlias = dict[str, dict[str, Any]]
+DialogBranchDict: TypeAlias = dict[WinMBResponse, Optional[str]]
+
+class NarrativeNode(TypedDict):
+    title: str
+    message: str
+    buttons: WinMBButtons
+    icon: WinMBIcon
+    next: DialogBranchDict
+
+NarrativeMap: TypeAlias = dict[str, NarrativeNode]
 
 class NativeNarrator:
     """Manages branching conversations using Win32 dialog results."""
     def __init__(self, page: ft.Page) -> None:
         self.page = page
 
-    def play_narrative(self, narrative_map: NarrativeDict, start_id: str = "start") -> None:
+    def play_narrative(self, narrative_map: NarrativeMap, start_id: str = "start") -> None:
         """
         Traverses a branching narrative map.
-        narrative_map: dict of { "id": { "message": str, "buttons": int, "next": dict } }
+        narrative_map: dict of { "id": { "message": str, "buttons": int, "next": DialogBranchDict } }
         """
         def _narrative_thread():
-            current_id = start_id
+            current_id: Optional[str] = start_id
             
             while current_id and current_id in narrative_map:
                 node = narrative_map[current_id]
@@ -30,10 +39,10 @@ class NativeNarrator:
                     icon=node.get("icon", WinMBIcon.INFO),
                     buttons=node.get("buttons", WinMBButtons.OK)
                 )
-                result = mbox()
+                result: WinMBResponse = mbox()
                 
                 # Determine the next node based on the button clicked
-                next_map = node.get("next", {})
+                next_map: DialogBranchDict = node.get("next", {})
                 
                 # If the result (i.e., 6 for YES) is in our 'next' map, go there
                 # Otherwise, end the conversation (None)
@@ -44,7 +53,7 @@ class NativeNarrator:
         self.page.run_thread(_narrative_thread)
     
     def trigger_interrogation(self):
-        narrative = {
+        narrative: NarrativeMap = {
             "start": {
                 "title": "Productivity Check",
                 "message": (
@@ -53,28 +62,34 @@ class NativeNarrator:
                 ),
                 "buttons": WinMBButtons.YESNO,
                 "icon": WinMBIcon.QUESTION,
-                "next": { 6: "honesty", 7: "denial" } # 6=YES, 7=NO
+                "next": {
+                    WinMBResponse.YES: "honesty",
+                    WinMBResponse.NO: "denial"
+                }
             },
             "honesty": {
                 "title": "The Overseer",
                 "message": "Excellent. Self-awareness is the first step. Keep up the good work.",
                 "buttons": WinMBButtons.OK,
                 "icon": WinMBIcon.INFO,
-                "next": { 1: None } # Ends conversation
+                "next": { WinMBResponse.OK: None }
             },
             "denial": {
                 "title": "SECURITY BREACH",
                 "message": "Lying is a violation of the productivity protocol. Prepare for system recalibration.",
                 "buttons": WinMBButtons.OK,
                 "icon": WinMBIcon.ERROR,
-                "next": { 1: "glitch_trigger" }
+                "next": { WinMBResponse.OK: "glitch_trigger" }
             },
             "glitch_trigger": {
                 "title": "FATAL ERROR",
                 "message": "0x0000DEAD: Internal Trust Corruption. Memory wipe initiated.",
                 "buttons": WinMBButtons.RETRYCANCEL,
                 "icon": WinMBIcon.ERROR,
-                "next": { 4: "denial", 2: None } # Loop back to denial if they click Retry
+                "next": {
+                    WinMBResponse.RETRY: "denial",
+                    WinMBResponse.CANCEL: None
+                }
             }
         }
 

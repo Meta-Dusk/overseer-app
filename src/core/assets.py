@@ -3,7 +3,7 @@ from dataclasses import dataclass
 # | Images |
 @dataclass
 class Scares:
-    wom1: str = "assets/images/o.png"
+    wom1: str = "images/o.png"
 
 @dataclass
 class Images:

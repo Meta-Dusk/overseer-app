@@ -97,7 +97,7 @@ class WinPositionedMessageBox:
 
     def spawn(self, title: str, message: str, icon: WinMBIcon = WinMBIcon.ERROR):
         """Returns a callable for page.run_thread()."""
-        style = int(icon) | WinMBStyleFlags.MB_SYSTEMMODAL | WinMBStyleFlags.MB_SETFOREGROUND
+        style = int(icon) | WinMBStyleFlags.SYSTEMMODAL | WinMBStyleFlags.SETFOREGROUND
 
         def _task() -> None:
             # Set the hook on the current thread
