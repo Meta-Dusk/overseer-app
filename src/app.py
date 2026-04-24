@@ -4,7 +4,7 @@ import asyncio
 from managers.loader import load_app_lists, reset_config, app_log, LogType
 from managers.window import WindowHelperManager
 from core.utilities import safe_sleep, format_time
-from core.data_types import WindowInfo, AppType
+from core.data_types import WindowInfo, AppType, UnusedEvent
 from components.layouts import PresetColumn, PresetWindowDragArea, DefaultContainer
 from components.appbar import PresetAppBar
 from components.buttons import ExitButton, MinimizeButton, PresetPopupMenuButton, \
@@ -163,7 +163,7 @@ class App:
         return True
     
     # | Event Handlers |
-    async def on_close(self, _) -> None:
+    async def on_close(self, _: UnusedEvent) -> None:
         """Handles window closing + animations."""
         if self.app_exiting:
             app_log("[App] App closed.")
@@ -265,6 +265,6 @@ class App:
                     else ft.Colors.ERROR if category == AppType.DISTRACTING
                     else ft.Colors.SECONDARY
                 )
-                self.page.update()
+                self.page.update(self.category_text, self.current_app_col)
             await self.match_app_type(category)
         app_log("Monitor task stopped.")

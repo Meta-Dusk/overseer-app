@@ -2,7 +2,7 @@ import flet as ft
 
 from core.test_handler import setup_test
 from components.layouts import DefaultContainer, CenteredColumn, DefaultWindowDragArea
-from managers.window_effects import WindowEffectsManager
+from utilities.window_effects import WindowEffectsManager
 
 APP_TITLE = "Native Dialog Test"
 

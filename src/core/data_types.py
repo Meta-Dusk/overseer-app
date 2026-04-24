@@ -1,5 +1,7 @@
+import flet as ft
 from enum import Enum
 from dataclasses import dataclass, field
+from typing import Any, TypeAlias
 
 class AppType(Enum):
     DISTRACTING = "distracting"
@@ -26,3 +28,5 @@ class Distracting:
 class WindowNames:
     productive: Productive = field(default_factory=Productive)
     distracting: Distracting = field(default_factory=Distracting)
+
+UnusedEvent: TypeAlias = ft.Event[Any]

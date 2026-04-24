@@ -1,7 +1,8 @@
 import random
-from managers.native_dialogs import WinMBIcon
 
-class ErrorFactory:
+from utilities.dialogs.basic import WinMBIcon
+
+class ErrorMessagesFactory:
     """Generates random, unsettling error messages for the Overseer."""
 
     SYSTEM_ERRORS = [

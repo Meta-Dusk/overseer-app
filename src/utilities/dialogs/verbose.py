@@ -1,7 +1,7 @@
 import ctypes
 import ctypes.wintypes as wintypes
 
-from managers.native_dialogs import WinMBIcon, WinMBStyleFlags
+from utilities.dialogs.basic import WinMBIcon, WinMBStyleFlags
 
 # --- Win32 API Setup ---
 user32 = ctypes.windll.user32
