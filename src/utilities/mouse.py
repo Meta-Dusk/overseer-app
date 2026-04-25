@@ -21,3 +21,13 @@ class WinMouse:
         center_x = (rect.left + rect.right) // 2
         center_y = (rect.top + rect.bottom) // 2
         return center_x, center_y
+    
+    class POINT(ctypes.Structure):
+        _fields_ = [("x", ctypes.c_long), ("y", ctypes.c_long)]
+
+    @classmethod
+    def get_position(cls):
+        """Returns (x, y) coordinates of the mouse."""
+        pt = cls.POINT()
+        ctypes.windll.user32.GetCursorPos(ctypes.byref(pt))
+        return pt.x, pt.y

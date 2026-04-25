@@ -1,10 +1,11 @@
 import flet as ft
 import time
-from typing import TypeAlias, Optional, TypedDict
+from typing import TypeAlias, Optional, TypedDict, Callable
 
 from utilities.dialogs.basic import WinMBIcon, WinMBButtons, WinMBResponse, WinMessageBox
 
 DialogBranchDict: TypeAlias = dict[WinMBResponse, Optional[str]]
+OptionalNarrationCallback: TypeAlias = Optional[Callable[[WinMBResponse], None]]
 
 class NarrativeNode(TypedDict):
     title: str
@@ -12,6 +13,7 @@ class NarrativeNode(TypedDict):
     buttons: WinMBButtons
     icon: WinMBIcon
     next: DialogBranchDict
+    callback: OptionalNarrationCallback
 
 NarrativeMap: TypeAlias = dict[str, NarrativeNode]
 
@@ -40,6 +42,8 @@ class NativeNarrator:
                     buttons=node.get("buttons", WinMBButtons.OK)
                 )
                 result: WinMBResponse = mbox()
+                callback = node.get("callback")
+                if callback: callback(result)
                 
                 # Determine the next node based on the button clicked
                 next_map: DialogBranchDict = node.get("next", {})
@@ -53,6 +57,10 @@ class NativeNarrator:
         self.page.run_thread(_narrative_thread)
     
     def trigger_interrogation(self):
+        def on_cancel_node(response: WinMBResponse) -> None:
+            if response != WinMBResponse.CANCEL: return
+            self.page.run_task(self.page.window.close)
+        
         narrative: NarrativeMap = {
             "start": {
                 "title": "Productivity Check",
@@ -65,21 +73,24 @@ class NativeNarrator:
                 "next": {
                     WinMBResponse.YES: "honesty",
                     WinMBResponse.NO: "denial"
-                }
+                },
+                "callback": None
             },
             "honesty": {
                 "title": "The Overseer",
                 "message": "Excellent. Self-awareness is the first step. Keep up the good work.",
                 "buttons": WinMBButtons.OK,
                 "icon": WinMBIcon.INFO,
-                "next": { WinMBResponse.OK: None }
+                "next": { WinMBResponse.OK: None },
+                "callback": None
             },
             "denial": {
                 "title": "SECURITY BREACH",
                 "message": "Lying is a violation of the productivity protocol. Prepare for system recalibration.",
                 "buttons": WinMBButtons.OK,
                 "icon": WinMBIcon.ERROR,
-                "next": { WinMBResponse.OK: "glitch_trigger" }
+                "next": { WinMBResponse.OK: "glitch_trigger" },
+                "callback": None
             },
             "glitch_trigger": {
                 "title": "FATAL ERROR",
@@ -89,7 +100,8 @@ class NativeNarrator:
                 "next": {
                     WinMBResponse.RETRY: "denial",
                     WinMBResponse.CANCEL: None
-                }
+                },
+                "callback": on_cancel_node
             }
         }
 

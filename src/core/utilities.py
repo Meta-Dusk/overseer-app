@@ -1,3 +1,4 @@
+import flet as ft
 import asyncio
 from datetime import datetime
 
@@ -41,3 +42,10 @@ def get_date() -> str:
 def clamp(value: float, min_value: float = 0.0, max_value: float = 1.0) -> float:
     """Ensures value stays between `min_value` and `max_value`."""
     return max(min_value, min(value, max_value))
+
+
+# Controls
+def try_update(*controls: ft.Control) -> None:
+    for control in controls:
+        try: control.update()
+        except RuntimeError: pass

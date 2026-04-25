@@ -6,7 +6,7 @@ from core.data_types import UnusedEvent
 from components.layouts import DefaultContainer, CenteredColumn, DefaultWindowDragArea
 from utilities.dialogs.basic import WinTaskDialog, WinTaskIcon, WinMessageBox, WinMBIcon
 from utilities.dialogs.verbose import WinPositionedMessageBox
-from utilities.screen_color import ScreenColorManager
+from utilities.screen_color import ScreenColorManager, ColorMatrices
 from utilities.desktop import DesktopManager
 from utilities.window_effects import WindowEffectsManager
 from managers.events import EventsManager
@@ -23,6 +23,12 @@ def test(page: ft.Page) -> None:
     initialized = ScreenColorManager.initialize()
     if not initialized:
         print("Warning: Monitor color effects not supported.")
+    
+    print("Checking username...")
+    user_name = DesktopManager.get_native_username()
+    print(f"Native: {user_name}")
+    print(f"Formatted: {DesktopManager.format_username(user_name)}")
+    print(f"MS Display Name: {DesktopManager.get_microsoft_display_name()}")
     
     async def trigger_pos_win_popup() -> None:
         # Randomly scatter errors across the screen
@@ -77,17 +83,18 @@ def test(page: ft.Page) -> None:
         ft.Divider(),
         ft.Button("Trigger Spam Event", on_click=lambda _: page.run_task(events.trigger_spam_event)),
         ft.Button("Spawn Random MessageBox", on_click=lambda _: events.spawn_random_mb()),
+        ft.Button("Spawn Random MessageBox at Mouse", on_click=lambda _: events.spawn_message_at_mouse()),
         ft.Divider(),
         ft.Button("Trigger Z-Flicker", on_click=lambda _: page.run_task(events.trigger_z_flicker)),
         ft.Divider(),
         ft.Button("Start Delayed Cursor Magnet", on_click=delayed_mouse_magnet),
         ft.Divider(),
-        ft.Button("Apply Grayscale", on_click=lambda _: ScreenColorManager.apply_grayscale()),
-        ft.Button("Apply Inversion", on_click=lambda _: ScreenColorManager.apply_invert()),
-        ft.Button("Apply Archive", on_click=lambda _: ScreenColorManager.apply_archive()),
-        ft.Button("Apply Blood Moon", on_click=lambda _: ScreenColorManager.apply_blood_moon()),
-        ft.Button("Apply Void", on_click=lambda _: ScreenColorManager.apply_void()),
-        ft.Button("Apply Decay", on_click=lambda _: ScreenColorManager.apply_decay()),
+        ft.Button("Apply Grayscale", on_click=lambda _: ScreenColorManager.apply_matrix(ColorMatrices.GRAYSCALE)),
+        ft.Button("Apply Inversion", on_click=lambda _: ScreenColorManager.apply_matrix(ColorMatrices.INVERT)),
+        ft.Button("Apply Archive", on_click=lambda _: ScreenColorManager.apply_matrix(ColorMatrices.ARCHIVE)),
+        ft.Button("Apply Blood Moon", on_click=lambda _: ScreenColorManager.apply_matrix(ColorMatrices.BLOOD_MOON)),
+        ft.Button("Apply Void", on_click=lambda _: ScreenColorManager.apply_matrix(ColorMatrices.get_dim())),
+        ft.Button("Apply Decay", on_click=lambda _: ScreenColorManager.apply_matrix(ColorMatrices.DECAY)),
         ft.Button("Reset Color Manipulation", on_click=lambda _: ScreenColorManager.reset()),
         ft.Divider(),
         ft.Button(
@@ -101,7 +108,10 @@ def test(page: ft.Page) -> None:
         ),
         ft.Button("Trigger Text Possession", on_click=lambda _: page.run_task(events.trigger_text_haunting)),
         ft.Divider(),
-        ft.Button("Test Narrative", on_click=lambda _: narrator.trigger_interrogation())
+        ft.Button("Test Narrative", on_click=lambda _: narrator.trigger_interrogation()),
+        ft.Divider(),
+        ft.Button("Trigger Ghostly Message", on_click=lambda _: page.run_task(events.trigger_ghostly_message)),
+        ft.Button("Trigger ASCII Art", on_click=lambda _: events.create_ascii_art()),
     ]
     
     form = DefaultWindowDragArea(

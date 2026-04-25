@@ -1,5 +1,10 @@
 import flet as ft
-import asyncio, random
+import asyncio, random, ctypes
+
+# Win32 Constants for Transparency
+GWL_EXSTYLE = -20
+WS_EX_LAYERED = 0x80000
+LWA_ALPHA = 0x2
 
 class WindowEffectsManager:
     def __init__(self, page: ft.Page):
@@ -40,3 +45,25 @@ class WindowEffectsManager:
         self.page.window.left = orig_x
         self.page.window.top = orig_y
         self.page.update()
+    
+    @classmethod
+    def set_transparency(cls, window_title: str, alpha: int = 150) -> bool:
+        """
+        Sets the transparency of a window by its title.
+        alpha: 0 (invisible) to 255 (opaque).
+        """
+        user32 = ctypes.windll.user32
+        
+        # Find the window handle
+        hwnd = user32.FindWindowW(None, window_title)
+        
+        if not hwnd: return False
+        # Get current extended styles
+        current_style = user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+        
+        # Add the 'Layered' bit to the style using Bitwise OR
+        user32.SetWindowLongW(hwnd, GWL_EXSTYLE, current_style | WS_EX_LAYERED)
+        
+        # Apply the transparency level
+        user32.SetLayeredWindowAttributes(hwnd, 0, alpha, LWA_ALPHA)
+        return True

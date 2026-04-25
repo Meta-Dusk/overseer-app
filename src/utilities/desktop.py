@@ -15,6 +15,10 @@ FILE_ATTRIBUTE_NORMAL = 0x80
 
 OptionalSuccessCallable: TypeAlias = Optional[Callable[[bool], None]]
 
+# Windows Name Formats
+# 3 = NameDisplay (The 'Friendly' name)
+NameDisplay = 3
+
 class DesktopManager:
     """Handles creating and removing 'Overseer' files on the user's desktop."""
     
@@ -107,3 +111,48 @@ class DesktopManager:
     def set_wallpaper(cls, path: str):
         # SPI_SETDESKWALLPAPER = 20
         ctypes.windll.user32.SystemParametersInfoW(20, 0, path, 3)
+    
+    @classmethod
+    def get_native_username(cls) -> str:
+        """Retrieves the current Windows username using the Win32 API."""
+        # Buffer to hold the name (UNLEN is typically 256)
+        size = wintypes.DWORD(257)
+        buffer = ctypes.create_unicode_buffer(size.value)
+        
+        # advapi32 handles user-specific account info
+        if ctypes.windll.advapi32.GetUserNameW(buffer, ctypes.byref(size)):
+            return buffer.value
+        return "User"
+    
+    @classmethod
+    def format_username(cls, raw_name: str) -> str:
+        """Cleans and capitalizes the name for a natural greeting."""
+        clean_name = raw_name.replace("_", " ").replace(".", " ")
+        formatted = clean_name.title()
+        
+        boring_names = ["Admin", "Administrator", "User", "Owner", "Pc", "My Pc"]
+        if formatted in boring_names:
+            return "Human"
+            
+        return formatted
+    
+    @classmethod
+    def get_microsoft_display_name(cls) -> Optional[str]:
+        """Retrieves the full display name from a Microsoft/Local account."""
+        secur32 = ctypes.windll.secur32
+        
+        # First, call with a null buffer to find the required size
+        size = wintypes.ULONG(0)
+        secur32.GetUserNameExW(NameDisplay, None, ctypes.byref(size))
+        
+        # Prepare the buffer with the returned size
+        buffer = ctypes.create_unicode_buffer(size.value)
+        
+        # Actually retrieve the name
+        if secur32.GetUserNameExW(NameDisplay, buffer, ctypes.byref(size)):
+            name = buffer.value.strip()
+            # If it returns the email or something blank, it failed to find a 'Friendly' name
+            if name and "@" not in name:
+                return name
+                
+        return None

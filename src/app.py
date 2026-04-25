@@ -1,10 +1,12 @@
 import flet as ft
-import asyncio
+import asyncio, random
+from typing import Optional
 
 from managers.loader import load_app_lists, reset_config, app_log, LogType
 from managers.window import WindowHelperManager
-from core.utilities import safe_sleep, format_time_str
+from core.utilities import safe_sleep, format_time_str, try_update
 from core.data_types import WindowInfo, AppType, UnusedEvent
+from core.assets import Assets
 from components.layouts import PresetColumn, PresetWindowDragArea, DefaultContainer
 from components.appbar import PresetAppBar
 from components.buttons import ExitButton, MinimizeButton, PresetPopupMenuButton, \
@@ -14,6 +16,9 @@ from components.loading_screen import LoadingIndicator, LoadingScreen
 from components.notifications import SimpleNotification, ErrorNotification
 from managers.error_checking import check_app_integrity
 from managers.smart_classifier import SmartClassifier
+from managers.events import EventsManager
+from utilities.screen_color import ScreenColorManager
+from utilities.desktop import DesktopManager
 
 class App:
     def __init__(self, page: ft.Page) -> None:
@@ -28,11 +33,14 @@ class App:
         self.stop_event = asyncio.Event()
         self.distraction_time: int = 0
         self.productive_time: int = 0
+        self.idle_time: int = 0
         self.app_exiting: bool = False
+        self.intensity: int = 0
         
         # Managers
         self.classifier = None
         self.window_manager = None
+        self.events = None
         
         app_log("App class instantiated.")
     
@@ -53,6 +61,11 @@ class App:
             self.window_names = load_app_lists()
             self.classifier = SmartClassifier(self.window_names)
             self.window_manager = WindowHelperManager()
+            self.events = EventsManager(self.page, app_title=self.title)
+            if ScreenColorManager.initialize():
+                app_log("[EventsManager] ScreenColorManager initialized!")
+            else:
+                app_log("[EventsManager] ScreenColorManager failed to initialize!")
             
             app_log("Checking app integrity...")
             await check_app_integrity(
@@ -97,7 +110,8 @@ class App:
                 actions=[
                     ThemeToggleButton(), popup_menu_btn,
                     ft.Container(padding=8),
-                    MinimizeButton(), FullscreenButton(), ExitButton(on_click=self.on_close)
+                    MinimizeButton(), FullscreenButton(on_long_press=self.on_long_press),
+                    ExitButton(on_click=self.on_close)
                 ]
             )
             
@@ -163,6 +177,22 @@ class App:
         return True
     
     # | Event Handlers |
+    async def on_long_press(self, _: UnusedEvent) -> None:
+        def on_submit(e: ft.Event[ft.TextField]) -> None:
+            if e.data is None: return
+            data: str = e.data
+            print(f"Entered name: {data}")
+            self.show_bday_dialog(data)
+            
+        dlg = ft.AlertDialog(
+            title="Enter a Name",
+            content=ft.TextField(
+                on_submit=on_submit, hint_text="Enter your name?",
+                max_lines=1, max_length=12, autofocus=True
+            )
+        )
+        self.page.show_dialog(dlg)
+    
     async def on_close(self, _: UnusedEvent) -> None:
         """Handles window closing + animations."""
         if self.app_exiting:
@@ -178,10 +208,15 @@ class App:
             self.window_manager.stop()
         else:
             app_log("[App] Missing window_manager!", LogType.WARNING)
+        
+        if ScreenColorManager.cleanup():
+            app_log("[App] ScreenColorManager successful cleanup.", LogType.GOOD)
+        else:
+            app_log("[App] ScreenColorManager failed to cleanup!", LogType.WARNING)
             
         self.form.opacity = 0
         self.form.offset = ft.Offset(0, -1)
-        self.form.update()
+        try_update(self.form)
         await asyncio.sleep(1)
         self.page.window.prevent_close = False
         self.page.window.update()
@@ -202,40 +237,102 @@ class App:
     
     
     # | Events |
-    async def match_app_type(self, app_type: AppType):
+    def show_bday_dialog(self, name: Optional[str]) -> None:
+        dlg = ft.AlertDialog(
+            title="Happy Birthday!",
+            content=ft.Image(Assets.images.cake, fit=ft.BoxFit.COVER)
+        )
+        
+        user_name = name if name else DesktopManager.get_microsoft_display_name()
+        print(f"user_name: {user_name}")
+        if user_name and self.events:
+            if self.events.is_bday(user_name):
+                self.page.show_dialog(dlg)
+    
+    async def match_event(self, app_type: AppType) -> None:
+        if self.distraction_time == 0 or self.productive_time == 0:
+            if self.distraction_time >= 10 and self.distraction_time < 20:
+                self.intensity = 1
+            elif self.distraction_time >= 20 and self.distraction_time < 30:
+                self.intensity = 2
+            elif self.distraction_time >= 30:
+                self.intensity = 3
+            else:
+                self.intensity = 0
+            
+            if self.events is None: return
+            if random.random() > 0.9:
+                await self.events.trigger_spam_event(self.intensity)
+            return
+        
+        distraction_ratio = self.distraction_time / self.productive_time
+        if distraction_ratio >= 2 and distraction_ratio < 4:
+            self.intensity = 1
+        elif distraction_ratio >= 4 and distraction_ratio < 6:
+            self.intensity = 2
+        elif distraction_ratio >= 6:
+            self.intensity = 3
+        else:
+            self.intensity = 0
+        print(f"[App] Ratio: {distraction_ratio}, Intensity: {self.intensity}")
+        
+        match app_type:
+            case AppType.PRODUCTIVE:
+                pass
+            
+            case AppType.DISTRACTING:
+                pass
+            
+            case AppType.NEUTRAL | _:
+                pass
+        
+        if self.events is None: return
+        if random.random() > 0.97:
+            await self.events.trigger_spam_event(self.intensity)
+    
+    async def match_app_type(self, app_type: AppType) -> None:
         """Event handler for detected window type from monitor task."""
         match app_type:
             case AppType.PRODUCTIVE:
                 self.productive_time += 1
+                
                 if self.productive_counter_text.spans and len(self.productive_counter_text.spans) > 0:
                     time_value = format_time_str(self.productive_time)
                     self.productive_counter_text.spans[1].text = time_value
-                    self.productive_counter_text.update()
+                    try_update(self.productive_counter_text)
                     print(f"[App] Incremented productive_time to: {time_value}")
-                await safe_sleep(1, self.stop_event)
             
             case AppType.DISTRACTING:
+                self.distraction_time += 1
+                
                 if self.popup_menu_item_csid.checked:
                     await self.page.window.center()
+                    
                 if not self.page.window.always_on_top and self.popup_menu_item_btfid.checked:
                     self.page.window.always_on_top = True
                     self.page.window.update()
+                    
                 if not self.page.window.maximized and self.popup_menu_item_fid.checked:
                     self.page.window.maximized = True
                     self.page.window.update()
-                self.distraction_time += 1
+                    
                 if self.distractions_counter_text.spans and len(self.distractions_counter_text.spans) > 0:
                     time_value = format_time_str(self.distraction_time)
                     self.distractions_counter_text.spans[1].text = time_value
-                    self.distractions_counter_text.update()
+                    try_update(self.distractions_counter_text)
                     print(f"[App] Incremented distraction_time to: {time_value}")
-                await safe_sleep(1, self.stop_event)
                 
             case AppType.NEUTRAL | _:
+                self.idle_time += 1
+                time_value = format_time_str(self.idle_time)
+                
                 if self.page.window.always_on_top:
                     self.page.window.always_on_top = False
                     self.page.window.update()
-                await safe_sleep(0.5, self.stop_event)
+                print(f"[App] Incremented idle_time to: {time_value}")
+        
+        await self.match_event(app_type)
+        await safe_sleep(1, self.stop_event)
     
     async def monitor_focus_async(self):
         """This is the main looping function for window detection and classification."""
@@ -267,6 +364,6 @@ class App:
                     else ft.Colors.ERROR if category == AppType.DISTRACTING
                     else ft.Colors.SECONDARY
                 )
-                self.page.update(self.category_text, self.current_app_col)
+                try_update(self.category_text, self.current_app_col)
             await self.match_app_type(category)
         app_log("Monitor task stopped.")

@@ -129,7 +129,10 @@ class WinTaskButtons(IntEnum):
     CLOSE = 0x0020
 
 class WinTaskDialog:
-    """Modern TaskDialog with branching support."""
+    """
+    Modern TaskDialog with branching support.\n
+    NOTE: This doesn't work in packaged builds.
+    """
 
     @classmethod
     def spawn(
