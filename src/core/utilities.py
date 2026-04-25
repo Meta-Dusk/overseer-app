@@ -1,3 +1,4 @@
+import flet as ft
 import asyncio
 from datetime import datetime
 
@@ -11,7 +12,7 @@ async def safe_sleep(duration: float, stop_event: asyncio.Event) -> None:
     
 
 # Formatting
-def format_time(seconds: int) -> str:
+def format_time_str(seconds: int) -> str:
     """Format a duration in seconds into a human-readable string."""
     if seconds < 60:
         return f"{seconds}s"
@@ -41,3 +42,10 @@ def get_date() -> str:
 def clamp(value: float, min_value: float = 0.0, max_value: float = 1.0) -> float:
     """Ensures value stays between `min_value` and `max_value`."""
     return max(min_value, min(value, max_value))
+
+
+# Controls
+def try_update(*controls: ft.Control) -> None:
+    for control in controls:
+        try: control.update()
+        except RuntimeError: pass

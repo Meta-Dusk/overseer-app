@@ -45,7 +45,7 @@ def app_log(msg: str, log_type: LogType = LogType.DEFAULT) -> None:
                 print(f"[DEBUG] {output}", flush=True)
 
             match log_type:
-                case LogType.WARNING: _printf(f"⚠️ {msg}")
+                case LogType.WARNING: _printf(f"⚠️  {msg}")
                 case LogType.GOOD: _printf(f"✅ {msg}")
                 case LogType.DEFAULT | _: _printf(f"ℹ️  {msg}")
                 

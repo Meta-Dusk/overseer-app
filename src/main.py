@@ -1,13 +1,15 @@
 import flet as ft
-from main_ui import main_ui
-from setup import before_main_ui
 
+from core.setup import setup_page
+from app import App
 
-def before_main(page: ft.Page):
-    before_main_ui(page)
-
-async def main(page: ft.Page):
-    await main_ui(page)
+async def main(page: ft.Page) -> None:
+    app = App(page)
+    setup = await app.setup()
     
+    if not setup:
+        raise Exception("App.setup() failed.")
+    if not await app.build():
+        raise Exception("App.build() failed.")
     
-ft.run(main, before_main)
+ft.run(main, setup_page)

@@ -1,9 +1,21 @@
 import flet as ft
 
 @ft.control
+class DefaultContainer(ft.Container):
+    def init(self):
+        self.expand = True
+        self.alignment = ft.Alignment.CENTER
+
+@ft.control
 class PresetColumn(ft.Column):
     spacing: ft.Number = 4
     horizontal_alignment: ft.CrossAxisAlignment = ft.CrossAxisAlignment.CENTER
+
+@ft.control
+class DefaultWindowDragArea(ft.WindowDragArea):
+    def init(self):
+        self.maximizable = False
+        self.expand = True
 
 @ft.control
 class PresetWindowDragArea(ft.WindowDragArea):

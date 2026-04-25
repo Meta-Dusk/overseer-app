@@ -1,12 +1,14 @@
 import flet as ft
-from typing import Optional
+from typing import Optional, TypeAlias, Callable
+
+OptionalCallableKeyboardEvent: TypeAlias = Optional[Callable[[ft.KeyboardEvent], None]]
 
 WINDOW_WIDTH: Optional[ft.Number] = 550
 WINDOW_HEIGHT: Optional[ft.Number] = 400
 
-def before_main_ui(page: ft.Page):
+def setup_page(page: ft.Page, title: str = "The Overseer", *, add_debug_hooks: bool = True):
     """Use for the `before_main` in `run()`."""
-    page.title = "The Overseer"
+    page.title = title
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.decoration = ft.BoxDecoration(border=ft.Border.all(2, ft.Colors.SURFACE_CONTAINER_HIGHEST))
@@ -21,8 +23,9 @@ def before_main_ui(page: ft.Page):
     page.window.prevent_close = False
     page.window.maximized = False
     
-    page.on_close = lambda e: print(e)
-    page.on_resize = lambda e: print(e)
-    page.window.on_event = lambda e: print(e)
+    if add_debug_hooks:
+        page.on_close = lambda e: print(e)
+        page.on_resize = lambda e: print(e)
+        page.window.on_event = lambda e: print(e)
     page.update()
     
