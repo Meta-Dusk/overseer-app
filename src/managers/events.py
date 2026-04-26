@@ -215,17 +215,12 @@ class EventsManager:
             return True
         return False
     
-    async def random_screen_effect_smooth(self) -> bool:
+    async def random_screen_effect_smooth(self, duration: float = 2) -> None:
         """You **MUST** initialize the `ScreenColorManager` first."""
         matrix = ColorMatrices.get_random_matrix()
-        duration: float = 2
-        if not await ScreenColorManager.transition_to(matrix, duration):
-            app_log("[EventsManager] Event Failed -> random_screen_effect_smooth()")
-            return False
-        else:
-            self.applied_filter = True
-            app_log("[EventsManager] Event Success -> random_screen_effect_smooth()")
-            return True
+        await ScreenColorManager.transition_to(matrix, duration)
+        self.applied_filter = True
+        app_log("[EventsManager] Event Success -> random_screen_effect_smooth()")
     
     async def trigger_random_event(
         self, intensity: int = 1, *,
