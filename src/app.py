@@ -1,13 +1,14 @@
 import flet as ft
 import flet_audio as fta
 import asyncio, random
-from typing import Optional
+from typing import Optional, cast
 
 from managers.loader import load_app_lists, reset_config, app_log, LogType
 from managers.window import WindowHelperManager
 from core.utilities import safe_sleep, format_time_str, try_update
-from core.data_types import WindowInfo, AppType, UnusedEvent
+from core.data_types import WindowInfo, AppType, UnusedEvent, EventsConfig
 from core.assets import Assets
+from core.preferences import Preferences
 from components.layouts import PresetColumn, PresetWindowDragArea, DefaultContainer, CenteredColumn
 from components.appbar import PresetAppBar
 from components.buttons import ExitButton, MinimizeButton, PresetPopupMenuButton, \
@@ -30,6 +31,7 @@ class App:
         # Configurations
         self.title = "The Overseer"
         self.loading_interval: float = 0.5
+        self.events_config = EventsConfig()
         
         # States
         self.window_names = None
@@ -47,6 +49,7 @@ class App:
         self.events = None
         self.narrator = None
         self.audio_manager = None
+        self.prefs = Preferences()
         
         app_log("[App] App class instantiated.")
     
@@ -61,6 +64,60 @@ class App:
         app_log(f"[App] Setting intensity to: {value}")
     
     # | App Main Methods |
+    async def save_configs(self) -> None:
+        """Pushes the current in-memory config state to persistent Preferences."""
+        await self.prefs.set("idle_freq", self.events_config.idle_frequency)
+        await self.prefs.set("idle_chance", self.events_config.idle_chance)
+        await self.prefs.set("dist_freq", self.events_config.distracted_frequency)
+        await self.prefs.set("dist_chance", self.events_config.distracted_chance)
+        await self.prefs.set("prod_freq", self.events_config.productive_frequency)
+        
+        if self.audio_manager:
+            await self.prefs.set("music_volume", self.audio_manager.music_volume)
+            await self.prefs.set("sfx_volume", self.audio_manager.sfx_volume)
+        app_log("[App] Configs pushed to storage.")
+    
+    async def reset_configs(self) -> None:
+        """Resets both in-memory and persistent settings to hardcoded defaults."""
+        self.events_config = EventsConfig() 
+        if self.audio_manager:
+            self.audio_manager.music_volume = 1.0
+            self.audio_manager.sfx_volume = 1.0
+            
+        await self.save_configs()
+        self.page.show_dialog(SimpleNotification("Settings have been reset to default values!"))
+    
+    async def get_configs(self) -> None:
+        idle_freq = await self.prefs.get("idle_freq")
+        if idle_freq and isinstance(idle_freq, int): self.events_config.idle_frequency = idle_freq
+        else: await self.prefs.set("idle_freq", self.events_config.idle_frequency)
+        
+        idle_chance = await self.prefs.get("idle_chance")
+        if idle_chance and isinstance(idle_chance, float): self.events_config.idle_chance = idle_chance
+        else: await self.prefs.set("idle_chance", self.events_config.idle_chance)
+        
+        dist_freq = await self.prefs.get("dist_freq")
+        if dist_freq and isinstance(dist_freq, int): self.events_config.distracted_frequency = dist_freq
+        else: await self.prefs.set("dist_freq", self.events_config.distracted_frequency)
+        
+        dist_chance = await self.prefs.get("dist_chance")
+        if dist_chance and isinstance(dist_chance, float): self.events_config.distracted_chance = dist_chance
+        else: await self.prefs.set("dist_chance", self.events_config.distracted_chance)
+        
+        prod_freq = await self.prefs.get("prod_freq")
+        if prod_freq and isinstance(prod_freq, int): self.events_config.productive_frequency = prod_freq
+        else: await self.prefs.set("prod_freq", self.events_config.productive_frequency)
+        
+        music_vol = await self.prefs.get("music_volume")
+        if music_vol and isinstance(music_vol, float) and self.audio_manager:
+            self.audio_manager.music_volume = music_vol
+        else: await self.prefs.set("music_volume", 1.0)
+        
+        sfx_vol = await self.prefs.get("sfx_volume")
+        if sfx_vol and isinstance(sfx_vol, float) and self.audio_manager:
+            self.audio_manager.sfx_volume = sfx_vol
+        else: await self.prefs.set("sfx_volume", 1.0)
+    
     async def setup(self) -> bool:
         try:
             # Loading Controls
@@ -79,7 +136,10 @@ class App:
             self.window_manager = WindowHelperManager()
             self.events = EventsManager(self.page, app_title=self.title)
             self.narrator = NativeNarrator(self.page)
-            self.audio_manager = AudioManager(self.page, music_volume=1.0, sfx_volume=0.5)
+            self.audio_manager = AudioManager(self.page, music_volume=1.0, sfx_volume=1.0)
+            
+            app_log("[App] Getting saved preferences...")
+            await self.get_configs()
             
             if ScreenColorManager.initialize():
                 app_log("[App] ScreenColorManager initialized!")
@@ -123,6 +183,12 @@ class App:
                     self.popup_menu_item_csid,
                     self.popup_menu_item_btfid
                 ]
+            )
+            popup_menu_btn.items.append(
+                SimplePopupMenuItem(
+                    text="Show Additional Settings", icon=ft.Icons.SETTINGS,
+                    on_click=self.show_settings
+                )
             )
             appbar = PresetAppBar(
                 title = self.title,
@@ -259,6 +325,182 @@ class App:
     
     
     # | Events |
+    async def show_settings(self, _: UnusedEvent) -> None:
+        def on_confirm(_: UnusedEvent) -> None:
+            self.page.pop_dialog()
+        
+        sfx_volume = await self.prefs.get("sfx_volume")
+        if sfx_volume is None: sfx_volume = 1.0
+        sfx_volume = cast(float, sfx_volume)
+        
+        music_volume = await self.prefs.get("music_volume")
+        if music_volume is None: music_volume = 1.0
+        music_volume = cast(float, music_volume)
+        
+        idle_freq = await self.prefs.get("idle_freq")
+        if idle_freq is None: idle_freq = 1
+        idle_freq = cast(int, idle_freq)
+        
+        idle_chance = await self.prefs.get("idle_chance")
+        if idle_chance is None: idle_chance = 0.5
+        idle_chance = cast(float, idle_chance)
+        
+        dist_freq = await self.prefs.get("dist_freq")
+        if dist_freq is None: dist_freq = 1
+        dist_freq = cast(int, dist_freq)
+        
+        dist_chance = await self.prefs.get("dist_chance")
+        if dist_chance is None: dist_chance = 0.5
+        dist_chance = cast(float, dist_chance)
+        
+        prod_freq = await self.prefs.get("prod_freq")
+        if prod_freq is None: prod_freq = 1
+        prod_freq = cast(int, prod_freq)
+        
+        async def sfx_on_change(e: ft.Event[ft.Slider]) -> None:
+            if not e.data: return
+            data: float = e.data
+            await self.prefs.set("sfx_volume", round(data, 2))
+            e.control.label = str(data)
+            e.control.update()
+        
+        async def music_on_change(e: ft.Event[ft.Slider]) -> None:
+            if not e.data: return
+            data: float = e.data
+            await self.prefs.set("music_volume", round(data, 2))
+            e.control.label = str(data)
+            e.control.update()
+        
+        def idle_freq_on_change(e: ft.Event[ft.Slider]) -> None:
+            if not e.data: return
+            data: float = e.data
+            e.control.label = f"Every {data:.2f}s"
+            e.control.update()
+        
+        async def idle_freq_on_change_end(e: ft.Event[ft.Slider]) -> None:
+            if not e.data: return
+            data: float = e.data
+            await self.prefs.set("idle_freq", round(data, 2))
+        
+        def idle_chance_on_change(e: ft.Event[ft.Slider]) -> None:
+            if not e.data: return
+            data: float = e.data
+            e.control.label = f"{data:.2f}%"
+            e.control.update()
+        
+        async def idle_chance_on_change_end(e: ft.Event[ft.Slider]) -> None:
+            if not e.data: return
+            data: float = e.data
+            await self.prefs.set("idle_chance", round(data, 2))
+        
+        def dist_freq_on_change(e: ft.Event[ft.Slider]) -> None:
+            if not e.data: return
+            data: float = e.data
+            e.control.label = f"Every {data:.2f}s"
+            e.control.update()
+        
+        async def dist_freq_on_change_end(e: ft.Event[ft.Slider]) -> None:
+            if not e.data: return
+            data: float = e.data
+            await self.prefs.set("dist_freq", round(data, 2))
+        
+        def dist_chance_on_change(e: ft.Event[ft.Slider]) -> None:
+            if not e.data: return
+            data: float = e.data
+            e.control.label = f"{data:.2f}%"
+            e.control.update()
+        
+        async def dist_chance_on_change_end(e: ft.Event[ft.Slider]) -> None:
+            if not e.data: return
+            data: float = e.data
+            await self.prefs.set("dist_chance", round(data, 2))
+        
+        def prod_freq_on_change(e: ft.Event[ft.Slider]) -> None:
+            if not e.data: return
+            data: float = e.data
+            e.control.label = f"Every {data:.2f}s"
+            e.control.update()
+        
+        async def prod_freq_on_change_end(e: ft.Event[ft.Slider]) -> None:
+            if not e.data: return
+            data: float = e.data
+            await self.prefs.set("prod_freq", round(data, 2))
+        
+        async def on_reset(_: UnusedEvent) -> None:
+            self.page.pop_dialog()
+            await self.reset_configs()
+            self.page.update()
+        
+        sfx_slider = ft.Slider(
+            value=sfx_volume, on_change=sfx_on_change,
+            divisions=10, label=f"{sfx_volume}%"
+        )
+        music_slider = ft.Slider(
+            value=music_volume, on_change=music_on_change,
+            divisions=10, label=f"{music_volume}%"
+        )
+    
+        idle_freq_slider = ft.Slider(
+            value=idle_freq, on_change=idle_freq_on_change,
+            on_change_end=idle_freq_on_change_end,
+            divisions=61, min=1, max=60, label=f"Every {idle_freq}s"
+        )
+        idle_chance_slider = ft.Slider(
+            value=idle_chance, on_change=idle_chance_on_change,
+            on_change_end=idle_chance_on_change_end,
+            divisions=100, label=f"{idle_chance}%"
+        )
+    
+        dist_freq_slider = ft.Slider(
+            value=dist_freq, on_change=dist_freq_on_change,
+            on_change_end=dist_freq_on_change_end,
+            divisions=61, min=1, max=60, label=f"Every {dist_freq}s"
+        )
+        dist_chance_slider = ft.Slider(
+            value=dist_chance, on_change=dist_chance_on_change,
+            on_change_end=dist_chance_on_change_end,
+            divisions=100, label=f"{dist_chance}%"
+        )
+    
+        prod_freq_slider = ft.Slider(
+            value=prod_freq, on_change=prod_freq_on_change,
+            on_change_end=prod_freq_on_change_end,
+            divisions=61, min=1, max=60, label=f"Every {prod_freq}s"
+        )
+    
+        dlg = ft.AlertDialog(
+            title="Events Settings", modal=True,
+            content=CenteredColumn(
+                controls=[
+                    ft.Divider(),
+                    ft.Text("SFX Volume"),
+                    sfx_slider,
+                    ft.Text("Music Volume", margin=ft.Margin.only(top=8)),
+                    music_slider,
+                    ft.Divider(),
+                    ft.Text("Idle Events Frequency", margin=ft.Margin.only(top=8)),
+                    idle_freq_slider,
+                    ft.Text("Idle Events Chance", margin=ft.Margin.only(top=8)),
+                    idle_chance_slider,
+                    ft.Text("Distraction Events Frequency", margin=ft.Margin.only(top=8)),
+                    dist_freq_slider,
+                    ft.Text("Distraction Events Chance", margin=ft.Margin.only(top=8)),
+                    dist_chance_slider,
+                    ft.Text("Productive Events Frequency", margin=ft.Margin.only(top=8)),
+                    prod_freq_slider,
+                    ft.Divider(),
+                    ft.Button("Reset Settings", on_click=on_reset)
+                ],
+                scroll=ft.ScrollMode.ALWAYS
+            ),
+            actions=[
+                ft.Button("Confirm", on_click=on_confirm),
+                ft.Button("Cancel", on_click=lambda e: e.page.pop_dialog())
+            ],
+            expand=True
+        )
+        self.page.show_dialog(dlg)
+    
     def show_bday_dialog(self, name: Optional[str]) -> None:
         user_name = name if name else DesktopManager.get_microsoft_display_name()
         print(f"user_name: {user_name}")
@@ -284,7 +526,7 @@ class App:
                         "This post was made by MetaDusk", size=12, italic=True,
                         color=ft.Colors.SECONDARY
                     )
-                ], tight=True, expand=False
+                ], tight=True
             ),
             actions=[
                 ft.Button("Thanks", icon=ft.Icons.CAKE, on_click=on_click)
@@ -348,7 +590,7 @@ class App:
         
         match app_type:
             case AppType.PRODUCTIVE:
-                if self.productive_time % 10: return
+                if self.productive_time % self.events_config.productive_frequency: return
                 if self.events.applied_filter:
                     ScreenColorManager.reset()
                     self.page.show_dialog(SimpleNotification("Lemme fix that for you :)"))
@@ -358,9 +600,9 @@ class App:
             
             case AppType.DISTRACTING:
                 if (
-                    self.distraction_time % 10 or
+                    self.distraction_time % self.events_config.distracted_frequency or
                     self.distraction_time < 20 or
-                    random.random() > 0.5
+                    random.random() < self.events_config.distracted_chance
                 ): return
                 
                 def on_state_change(e: fta.AudioStateChangeEvent) -> None:
@@ -385,9 +627,9 @@ class App:
             
             case AppType.NEUTRAL | _:
                 if (
-                    self.idle_time % 10 or
+                    self.idle_time % self.events_config.idle_frequency or
                     self.idle_time < 30 or
-                    random.random() > 0.70
+                    random.random() < self.events_config.idle_chance
                 ): return
                 
                 if self.intensity == 1 and self.idle_time >= 60 and self.intensity != 2:
