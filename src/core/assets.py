@@ -6,6 +6,8 @@ class Images:
     cake: str = "images/bday_cake.png"
     blackwall: str = "images/thing.png"
     blackwall_2: str = "images/thong.png"
+    blackwall_3: str = "images/vista.png"
+    blackwall_4: str = "images/field.png"
 
 
 # | Audio |

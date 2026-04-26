@@ -299,7 +299,9 @@ class App:
     ) -> None:
         path = image_path if image_path else random.choice([
             Assets.images.blackwall,
-            Assets.images.blackwall_2
+            Assets.images.blackwall_2,
+            Assets.images.blackwall_3,
+            Assets.images.blackwall_4
         ])
         if self.page.appbar: self.page.appbar.visible = False
         self.page.padding = 0
