@@ -3,6 +3,7 @@ import time
 from typing import TypeAlias, Optional, TypedDict, Callable
 
 from utilities.dialogs.basic import WinMBIcon, WinMBButtons, WinMBResponse, WinMessageBox
+from utilities.screen_color import ScreenColorManager, ColorMatrices
 
 DialogBranchDict: TypeAlias = dict[WinMBResponse, Optional[str]]
 OptionalNarrationCallback: TypeAlias = Optional[Callable[[WinMBResponse], None]]
@@ -59,6 +60,7 @@ class NativeNarrator:
     def trigger_interrogation(self):
         def on_cancel_node(response: WinMBResponse) -> None:
             if response != WinMBResponse.CANCEL: return
+            ScreenColorManager.apply_matrix(ColorMatrices.BLOOD_MOON)
             self.page.run_task(self.page.window.close)
         
         narrative: NarrativeMap = {

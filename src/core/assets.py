@@ -22,6 +22,7 @@ class SFX:
     lightning: str = "audio/sfx/lightning.mp3"
     knock_left: str = "audio/sfx/knock_left.mp3"
     knock_right: str = "audio/sfx/knock_right.mp3"
+    discord_ping: str = "audio/sfx/discord_ping.mp3"
 
 @dataclass
 class Audio:
