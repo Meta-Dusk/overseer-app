@@ -14,6 +14,7 @@ def setup_page(page: ft.Page, title: str = "The Overseer", *, add_debug_hooks: b
     page.decoration = ft.BoxDecoration(border=ft.Border.all(2, ft.Colors.SURFACE_CONTAINER_HIGHEST))
     page.theme_mode = ft.ThemeMode.DARK
     page.theme = ft.Theme(ft.Colors.DEEP_PURPLE_900)
+    page.padding = 4
     
     page.window.width = WINDOW_WIDTH
     page.window.height = WINDOW_HEIGHT

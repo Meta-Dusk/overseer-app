@@ -1,6 +1,6 @@
 [project]
 name = "Overseer"
-version = "0.3.1"
+version = "0.3.2"
 description = "An App for Monitoring Your Activity, and Stuff..."
 readme = "README.md"
 requires-python = ">=3.13"

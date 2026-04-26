@@ -302,9 +302,11 @@ class App:
             Assets.images.blackwall_2
         ])
         if self.page.appbar: self.page.appbar.visible = False
+        self.page.padding = 0
+        self.page.decoration = None
         self.page.controls.clear()
         self.page.add(
-            ft.Image(path, fit=ft.BoxFit.COVER, expand=True)
+            ft.Image(path, fit=ft.BoxFit.FILL, expand=True, margin=0)
         )
         self.page.window.maximized = True
         self.page.window.always_on_top = True
@@ -313,6 +315,10 @@ class App:
         def on_state_change(e: fta.AudioStateChangeEvent) -> None:
             if e.state == fta.AudioState.COMPLETED:
                 if self.page.appbar: self.page.appbar.visible = True
+                self.page.padding = 4
+                self.page.decoration = ft.BoxDecoration(
+                    border=ft.Border.all(2, ft.Colors.SURFACE_CONTAINER_HIGHEST)
+                )
                 self.page.controls.clear()
                 self.page.add(self.form)
                 self.page.window.maximized = False
@@ -347,7 +353,6 @@ class App:
                 if self.audio_manager and self.playing_music:
                     if self.audio_manager.music_instance:
                         self.page.run_task(self.audio_manager.music_instance.pause)
-                self.page.run_task(self.show_jumpscare)
             
             case AppType.DISTRACTING:
                 if (
@@ -380,7 +385,7 @@ class App:
                 if (
                     self.idle_time % 10 or
                     self.idle_time < 30 or
-                    random.random() > 0.5
+                    random.random() > 0.70
                 ): return
                 
                 if self.intensity == 1 and self.idle_time >= 60 and self.intensity != 2:
