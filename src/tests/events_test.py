@@ -107,11 +107,13 @@ def test(page: ft.Page) -> None:
             on_click=lambda _: page.run_task(events.trigger_file_bomb, auto_open=True)
         ),
         ft.Button("Trigger Text Possession", on_click=lambda _: page.run_task(events.trigger_text_haunting)),
+        ft.Button("Trigger Ghostly Message", on_click=lambda _: page.run_task(events.trigger_ghostly_message)),
         ft.Divider(),
         ft.Button("Test Narrative", on_click=lambda _: narrator.trigger_interrogation()),
         ft.Divider(),
-        ft.Button("Trigger Ghostly Message", on_click=lambda _: page.run_task(events.trigger_ghostly_message)),
         ft.Button("Trigger ASCII Art", on_click=lambda _: events.create_ascii_art()),
+        ft.Button("Trigger File Bomb", on_click=lambda _: page.run_task(events.trigger_file_bomb, random.randint(1, 5))),
+        ft.Button("Create Random File", on_click=lambda _: events.create_random_file()),
     ]
     
     form = DefaultWindowDragArea(

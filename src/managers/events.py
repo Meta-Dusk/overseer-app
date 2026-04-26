@@ -1,9 +1,9 @@
 import flet as ft
 import random, asyncio, ctypes, os
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Callable, Coroutine, Any, Sequence
 
-from core.constants import THE_WATCHER
+from core.constants import THE_WATCHER, WEIRD_TITLE
 from utilities.dialogs.verbose import WinPositionedMessageBox
 from utilities.message_factory import ErrorMessagesFactory
 from utilities.monitor import MonitorManager
@@ -11,6 +11,8 @@ from utilities.mouse import WinMouse
 from utilities.desktop import DesktopManager
 from utilities.window_effects import WindowEffectsManager
 from utilities.ghost_writer import GhostWriter
+from utilities.screen_color import ColorMatrices, ScreenColorManager
+from managers.loader import app_log
 
 # Win32 Constants for Z-Order
 HWND_NOTOPMOST = -2
@@ -25,6 +27,7 @@ class EventsManager:
         self.page = page
         self.app_title = app_title
         self.user32 = ctypes.windll.user32
+        self.applied_filter: bool = False
     
     @property
     def get_timestamp(self) -> str:
@@ -107,22 +110,25 @@ class EventsManager:
         WinMouse.set_position(*coords)
         return True
     
-    async def trigger_file_bomb(self, count: int = 1, auto_open: bool = False) -> None:
+    async def trigger_file_bomb(self, count: int = 1, *, auto_open: bool = False) -> None:
         """Manifests and opens multiple read-only files rapidly."""
         messages = [
             "FOCUS IS MANDATORY.",
             "WHY IS YOUTUBE OPEN?",
             "THE OVERSEER IS DISPLEASED.",
             "WHY ARE YOU NOT DOING YOUR ASSESSMENTS?",
-            "I CAN SEE YOU."
+            "I CAN SEE YOU.",
+            WEIRD_TITLE
         ]
         
-        for _ in range(count):
+        for i in range(count):
             msg = random.choice(messages)
             DesktopManager.create_desktop_file(
-                self.get_def_file_name, msg, auto_open=auto_open
+                f"{i}_{self.get_def_file_name}", msg, auto_open=auto_open
             )
             if count > 1: await asyncio.sleep(0.2)
+        
+        self.spawn_message_at_mouse("Look at your desktop.")
     
     async def trigger_text_haunting(self) -> None:
         """A multi-stage event that manipulates a text file."""
@@ -138,7 +144,7 @@ class EventsManager:
             self.page.window.minimized = False
             self.page.window.update()
         
-        # await self.trigger_z_flicker(count=3)
+        await self.trigger_z_flicker(count=3)
         self.page.window.minimized = True
         self.page.window.update()
         self.page.run_thread(
@@ -148,6 +154,7 @@ class EventsManager:
         )
     
     async def trigger_ghostly_message(self) -> None:
+        await self.trigger_z_flicker(count=3)
         self.page.window.minimized = True
         self.page.window.update()
         await asyncio.sleep(1.0)
@@ -163,7 +170,7 @@ class EventsManager:
             self.page.window.update()
           
         self.page.run_thread(lambda: GhostWriter.possess_blank_notepad(
-            "I'm not even really here. I'm just a fragment of his code.",
+            "I'm in your walls.\nI'm in your computer.\nI'm... Everywhere.",
             on_finish=on_finish
         ))
     
@@ -172,9 +179,91 @@ class EventsManager:
             self.get_def_file_name, THE_WATCHER, auto_open=True
         )
     
-    def spawn_message_at_mouse(self, intensity: int = 1) -> None:
-        title, message, icon = ErrorMessagesFactory.get_random(intensity)
+    def create_random_file(self) -> None:
+        def random_breaks() -> str:
+            list = ["\n" for _ in range(random.randint(1, 5))]
+            return "".join(list)
+        
+        content: str = ""
+        for _ in range(random.randint(1, 5)):
+            content += f"{random_breaks()}{WEIRD_TITLE}{random_breaks()}"
+        DesktopManager.create_desktop_file(
+            self.get_def_file_name, content, auto_open=True
+        )
+    
+    def spawn_message_at_mouse(
+        self, message: Optional[str] = None, *,
+        intensity: int = 1,
+    ) -> None:
+        title, msg, icon = ErrorMessagesFactory.get_random(intensity)
         mx, my = WinMouse.get_position()
         pos_box = WinPositionedMessageBox(mx, my)
-        task = pos_box.spawn(title=title, message=message, icon=icon)
+        task = pos_box.spawn(
+            title=title, message=message if message else msg, icon=icon
+        )
         self.page.run_thread(task)
+    
+    async def random_screen_flicker(self) -> bool:
+        """You **MUST** initialize the `ScreenColorManager` first."""
+        matrix = ColorMatrices.get_random_matrix()
+        if not ScreenColorManager.apply_matrix(matrix):
+            app_log("[EventsManager] Event Failed -> random_screen_flicker()")
+            return False
+        await asyncio.sleep(0.1)
+        if ScreenColorManager.reset():
+            app_log("[EventsManager] Event Success -> random_screen_flicker()")
+            return True
+        return False
+    
+    async def random_screen_effect_smooth(self) -> bool:
+        """You **MUST** initialize the `ScreenColorManager` first."""
+        matrix = ColorMatrices.get_random_matrix()
+        duration: float = 2
+        if not await ScreenColorManager.transition_to(matrix, duration):
+            app_log("[EventsManager] Event Failed -> random_screen_effect_smooth()")
+            return False
+        else:
+            self.applied_filter = True
+            app_log("[EventsManager] Event Success -> random_screen_effect_smooth()")
+            return True
+    
+    async def trigger_random_event(
+        self, intensity: int = 1, *,
+        new_none_events: Optional[Sequence[Callable[[], None]]] = None,
+        new_int_events: Optional[Sequence[Callable[[int], None]]] = None,
+        new_none_coro_events: Optional[Sequence[Callable[[], Coroutine[Any, Any, None]]]] = None,
+    ) -> None:
+        app_log("[EventsManager] Choosing a random event...")
+        if new_none_events: none_callbacks = [clbk for clbk in new_none_events]
+        else: none_callbacks = []
+        if new_int_events: int_callbacks = [lambda: clbk(intensity) for clbk in new_int_events]
+        else: int_callbacks = []
+        if new_none_coro_events: none_coroutines = [clbk for clbk in new_none_coro_events]
+        else: none_coroutines = []
+        
+        callbacks = [
+            self.create_ascii_art,
+            self.pull_mouse_to_app,
+            self.create_random_file,
+            lambda: self.spawn_message_at_mouse(intensity=intensity),
+            lambda: self.spawn_random_mb(intensity),
+            *none_callbacks, *int_callbacks
+        ]
+        
+        coroutines = [
+            self.random_screen_flicker,
+            self.trigger_ghostly_message,
+            self.trigger_text_haunting,
+            self.trigger_z_flicker,
+            self.random_screen_effect_smooth,
+            lambda: self.trigger_file_bomb(random.randint(1, 5)),
+            lambda: self.trigger_spam_event(intensity),
+            *none_coroutines
+        ]
+        
+        callback = random.choice(callbacks)
+        coroutine = random.choice(coroutines)
+        if random.random() > 0.5:
+            callback()
+        else:
+            await coroutine()

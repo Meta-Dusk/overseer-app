@@ -1,4 +1,4 @@
-import ctypes, asyncio
+import ctypes, asyncio, random
 from ctypes import wintypes
 from typing import Optional, TypeAlias
 
@@ -60,7 +60,7 @@ class ColorMatrices:
     ]
 
     @staticmethod
-    def get_dim(intensity: float = 0.1) -> list[float]:
+    def get_dim(intensity: float = 0.1) -> ColorMatrix:
         """Generates a matrix to dim the screen by a specific intensity (0.0 - 1.0)."""
         i = max(0.0, min(1.0, intensity))
         return [
@@ -70,6 +70,14 @@ class ColorMatrices:
             0.0, 0.0, 0.0, 1.0, 0.0,
             0.0, 0.0, 0.0, 0.0, 1.0
         ]
+    
+    @classmethod
+    def get_random_matrix(cls) -> ColorMatrix:
+        matrix = random.choice([
+            cls.ARCHIVE, cls.BLOOD_MOON, cls.DECAY,
+            cls.GRAYSCALE, cls.INVERT, cls.get_dim()
+        ])
+        return matrix
 
 class ScreenColorManager:
     """

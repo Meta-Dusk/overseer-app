@@ -7,7 +7,7 @@ from managers.window import WindowHelperManager
 from core.utilities import safe_sleep, format_time_str, try_update
 from core.data_types import WindowInfo, AppType, UnusedEvent
 from core.assets import Assets
-from components.layouts import PresetColumn, PresetWindowDragArea, DefaultContainer
+from components.layouts import PresetColumn, PresetWindowDragArea, DefaultContainer, CenteredColumn
 from components.appbar import PresetAppBar
 from components.buttons import ExitButton, MinimizeButton, PresetPopupMenuButton, \
     SimplePopupMenuItem, FullscreenButton, ThemeToggleButton
@@ -17,6 +17,8 @@ from components.notifications import SimpleNotification, ErrorNotification
 from managers.error_checking import check_app_integrity
 from managers.smart_classifier import SmartClassifier
 from managers.events import EventsManager
+from managers.narrator import NativeNarrator
+from managers.audio import AudioManager
 from utilities.screen_color import ScreenColorManager
 from utilities.desktop import DesktopManager
 
@@ -35,14 +37,26 @@ class App:
         self.productive_time: int = 0
         self.idle_time: int = 0
         self.app_exiting: bool = False
-        self.intensity: int = 0
+        self._intensity: int = 1
         
         # Managers
         self.classifier = None
         self.window_manager = None
         self.events = None
+        self.narrator = None
+        self.audio_manager = None
         
-        app_log("App class instantiated.")
+        app_log("[App] App class instantiated.")
+    
+    # | Properties |
+    @property
+    def intensity(self) -> int:
+        return self._intensity
+    
+    @intensity.setter
+    def intensity(self, value: int) -> None:
+        self._intensity = value
+        app_log(f"[App] Setting intensity to: {value}")
     
     # | App Main Methods |
     async def setup(self) -> bool:
@@ -57,17 +71,20 @@ class App:
             self.page.update()
             await self.page.window.center()
             
-            app_log("Initiating setup...")
+            app_log("[App] Initiating setup...")
             self.window_names = load_app_lists()
             self.classifier = SmartClassifier(self.window_names)
             self.window_manager = WindowHelperManager()
             self.events = EventsManager(self.page, app_title=self.title)
-            if ScreenColorManager.initialize():
-                app_log("[EventsManager] ScreenColorManager initialized!")
-            else:
-                app_log("[EventsManager] ScreenColorManager failed to initialize!")
+            self.narrator = NativeNarrator(self.page)
+            self.audio_manager = AudioManager(self.page, music_volume=1.0, sfx_volume=1.0)
             
-            app_log("Checking app integrity...")
+            if ScreenColorManager.initialize():
+                app_log("[App] ScreenColorManager initialized!")
+            else:
+                app_log("[App] ScreenColorManager failed to initialize!")
+            
+            app_log("[App] Checking app integrity...")
             await check_app_integrity(
                 self.page, loading_text, self.window_manager,
                 progress_ring, self.loading_interval
@@ -209,6 +226,9 @@ class App:
         else:
             app_log("[App] Missing window_manager!", LogType.WARNING)
         
+        DesktopManager.purge_created_files()
+        app_log("[App] Attempted to purge all created files.")
+        
         if ScreenColorManager.cleanup():
             app_log("[App] ScreenColorManager successful cleanup.", LogType.GOOD)
         else:
@@ -227,7 +247,7 @@ class App:
             case ft.WindowEventType.CLOSE: await self.on_close(e)
             case _: pass
     
-    def reset_config_btn_call(self, _):
+    def reset_config_btn_call(self, _: UnusedEvent):
         """Resets the config to its default values once called."""
         if reset_config():
             notif = SimpleNotification("Successful reset of config file.", duration=1500)
@@ -238,57 +258,125 @@ class App:
     
     # | Events |
     def show_bday_dialog(self, name: Optional[str]) -> None:
-        dlg = ft.AlertDialog(
-            title="Happy Birthday!",
-            content=ft.Image(Assets.images.cake, fit=ft.BoxFit.COVER)
-        )
-        
         user_name = name if name else DesktopManager.get_microsoft_display_name()
         print(f"user_name: {user_name}")
-        if user_name and self.events:
-            if self.events.is_bday(user_name):
-                self.page.show_dialog(dlg)
-    
-    async def match_event(self, app_type: AppType) -> None:
-        if self.distraction_time == 0 or self.productive_time == 0:
-            if self.distraction_time >= 10 and self.distraction_time < 20:
-                self.intensity = 1
-            elif self.distraction_time >= 20 and self.distraction_time < 30:
-                self.intensity = 2
-            elif self.distraction_time >= 30:
-                self.intensity = 3
-            else:
-                self.intensity = 0
-            
-            if self.events is None: return
-            if random.random() > 0.9:
-                await self.events.trigger_spam_event(self.intensity)
-            return
+        if user_name is None or self.events is None: return
+        if not self.events.is_bday(user_name): return
         
-        distraction_ratio = self.distraction_time / self.productive_time
-        if distraction_ratio >= 2 and distraction_ratio < 4:
-            self.intensity = 1
-        elif distraction_ratio >= 4 and distraction_ratio < 6:
-            self.intensity = 2
-        elif distraction_ratio >= 6:
-            self.intensity = 3
-        else:
-            self.intensity = 0
-        print(f"[App] Ratio: {distraction_ratio}, Intensity: {self.intensity}")
+        def maximize_window(value: bool) -> None:
+            if self.page.window.maximized == value: return
+            self.page.window.maximized = value
+            self.page.window.update()
+        
+        def on_click(_: UnusedEvent) -> None:
+            self.page.pop_dialog()
+            maximize_window(False)
+        
+        maximize_window(True)
+        dlg = ft.AlertDialog(
+            title=f"Happy Birthday, {user_name}!",
+            content=CenteredColumn(
+                controls=[
+                    ft.Image(Assets.images.cake, fit=ft.BoxFit.COVER, width=200),
+                    ft.Text(
+                        "This post was made by MetaDusk", size=12, italic=True,
+                        color=ft.Colors.SECONDARY
+                    )
+                ], tight=True, expand=False
+            ),
+            actions=[
+                ft.Button("Thanks", icon=ft.Icons.CAKE, on_click=on_click)
+            ],
+            on_dismiss=lambda _: maximize_window(False)
+        )
+        self.page.show_dialog(dlg)
+    
+    async def show_jumpscare(
+        self, image_path: Optional[str] = None, *,
+        play_sfx: bool = True
+    ) -> None:
+        path = image_path if image_path else random.choice([
+            Assets.images.scares.mm,
+            Assets.images.scares.wo
+        ])
+        if self.page.appbar: self.page.appbar.visible = False
+        self.page.controls.clear()
+        self.page.add(
+            ft.Image(path, fit=ft.BoxFit.COVER, expand=True)
+        )
+        self.page.window.maximized = True
+        self.page.update()
+        if play_sfx and self.audio_manager:
+            self.audio_manager.play_sfx(random.choice([
+                Assets.audio.sfx.knock_left,
+                Assets.audio.sfx.knock_right
+            ]))
+        
+        await asyncio.sleep(1)
+        if self.page.appbar: self.page.appbar.visible = True
+        self.page.controls.clear()
+        self.page.add(self.form)
+        self.page.window.maximized = False
+        self.page.update()
+    
+    def match_event(self, app_type: AppType) -> None:
+        if self.events is None:
+            app_log("[App] Missing EventsManager!")
+            return
         
         match app_type:
             case AppType.PRODUCTIVE:
-                pass
+                if self.productive_time % 10: return
+                if self.events.applied_filter:
+                    ScreenColorManager.reset()
+                    self.page.show_dialog(SimpleNotification("Lemme fix that for you :)"))
             
             case AppType.DISTRACTING:
-                pass
+                if (
+                    self.distraction_time % 10 or
+                    self.distraction_time < 20 or
+                    random.random() > 0.5
+                ): return
+                
+                if self.intensity == 1 and self.distraction_time >= 30 and self.intensity != 2:
+                    self.intensity = 2
+                elif self.intensity == 2 and self.distraction_time >= 60 and self.intensity != 3:
+                    self.intensity = 3
+                    
+                self.page.run_task(
+                    self.events.trigger_random_event, self.intensity,
+                    new_none_coro_events=[self.show_jumpscare]
+                )
             
             case AppType.NEUTRAL | _:
-                pass
-        
-        if self.events is None: return
-        if random.random() > 0.97:
-            await self.events.trigger_spam_event(self.intensity)
+                if (
+                    self.idle_time % 10 or
+                    self.idle_time < 30 or
+                    random.random() > 0.5
+                ): return
+                
+                if self.intensity == 1 and self.idle_time >= 60 and self.intensity != 2:
+                    self.intensity = 2
+                elif self.intensity == 2 and self.idle_time >= 120 and self.intensity != 3:
+                    self.intensity = 3
+                    
+                none_events = [
+                    (self.narrator.trigger_interrogation if self.narrator else None),
+                    (self.audio_manager.play_sfx(Assets.audio.sfx.knock_left) if self.audio_manager else None),
+                    (self.audio_manager.play_sfx(Assets.audio.sfx.knock_right) if self.audio_manager else None),
+                    (self.audio_manager.play_sfx(Assets.audio.sfx.discord_ping) if self.audio_manager else None),
+                    (self.audio_manager.play_sfx(Assets.audio.sfx.lightning) if self.audio_manager else None)
+                ]
+                while len(none_events) > 0:
+                    try: none_events.remove(None)
+                    except ValueError: break
+                if len(none_events) == 0: none_events = None
+                
+                self.page.run_task(
+                    self.events.trigger_random_event, self.intensity,
+                    new_none_events=none_events,
+                    new_none_coro_events=[self.show_jumpscare]
+                )
     
     async def match_app_type(self, app_type: AppType) -> None:
         """Event handler for detected window type from monitor task."""
@@ -331,10 +419,10 @@ class App:
                     self.page.window.update()
                 print(f"[App] Incremented idle_time to: {time_value}")
         
-        await self.match_event(app_type)
+        self.match_event(app_type)
         await safe_sleep(1, self.stop_event)
     
-    async def monitor_focus_async(self):
+    async def monitor_focus_async(self) -> None:
         """This is the main looping function for window detection and classification."""
         prev_title = ""
         while not self.stop_event.is_set():
@@ -366,4 +454,4 @@ class App:
                 )
                 try_update(self.category_text, self.current_app_col)
             await self.match_app_type(category)
-        app_log("Monitor task stopped.")
+        app_log("[App] Monitor task stopped.")
