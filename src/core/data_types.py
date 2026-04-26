@@ -30,3 +30,11 @@ class WindowNames:
     distracting: Distracting = field(default_factory=Distracting)
 
 UnusedEvent: TypeAlias = ft.Event[Any]
+
+@dataclass
+class EventsConfig:
+    idle_frequency: int = 10
+    distracted_frequency: int = 10
+    productive_frequency: int = 10
+    idle_chance: float = 0.5
+    distracted_chance: float = 0.5
