@@ -82,7 +82,7 @@ class AudioManager:
         left_volume: Optional[float] = None,
         right_volume: Optional[float] = None,
         base_volume: Optional[float] = None
-    ) -> None:
+    ) -> Optional[fta.Audio]:
         """Plays a sound effect with panning and spam prevention."""
         try:
             # Distance Culling
@@ -119,6 +119,8 @@ class AudioManager:
                 on_state_change=on_state_change
             )
             self._sfx_instances.append(new_sfx)
+            return new_sfx
             
         except Exception as e:
             self._debug_msg(f"SFX Error: {e}")
+        return None

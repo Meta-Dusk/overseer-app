@@ -1,4 +1,5 @@
 import flet as ft
+import flet_audio as fta
 import asyncio, random
 from typing import Optional
 
@@ -38,6 +39,7 @@ class App:
         self.idle_time: int = 0
         self.app_exiting: bool = False
         self._intensity: int = 1
+        self.playing_music: bool = False
         
         # Managers
         self.classifier = None
@@ -77,7 +79,7 @@ class App:
             self.window_manager = WindowHelperManager()
             self.events = EventsManager(self.page, app_title=self.title)
             self.narrator = NativeNarrator(self.page)
-            self.audio_manager = AudioManager(self.page, music_volume=1.0, sfx_volume=1.0)
+            self.audio_manager = AudioManager(self.page, music_volume=1.0, sfx_volume=0.5)
             
             if ScreenColorManager.initialize():
                 app_log("[App] ScreenColorManager initialized!")
@@ -293,11 +295,11 @@ class App:
     
     async def show_jumpscare(
         self, image_path: Optional[str] = None, *,
-        play_sfx: bool = True
+        play_sfx: bool = True,
     ) -> None:
         path = image_path if image_path else random.choice([
-            Assets.images.scares.mm,
-            Assets.images.scares.wo
+            Assets.images.blackwall,
+            Assets.images.blackwall_2
         ])
         if self.page.appbar: self.page.appbar.visible = False
         self.page.controls.clear()
@@ -305,19 +307,31 @@ class App:
             ft.Image(path, fit=ft.BoxFit.COVER, expand=True)
         )
         self.page.window.maximized = True
+        self.page.window.always_on_top = True
         self.page.update()
-        if play_sfx and self.audio_manager:
-            self.audio_manager.play_sfx(random.choice([
-                Assets.audio.sfx.knock_left,
-                Assets.audio.sfx.knock_right
-            ]))
         
-        await asyncio.sleep(1)
-        if self.page.appbar: self.page.appbar.visible = True
-        self.page.controls.clear()
-        self.page.add(self.form)
-        self.page.window.maximized = False
-        self.page.update()
+        def on_state_change(e: fta.AudioStateChangeEvent) -> None:
+            if e.state == fta.AudioState.COMPLETED:
+                if self.page.appbar: self.page.appbar.visible = True
+                self.page.controls.clear()
+                self.page.add(self.form)
+                self.page.window.maximized = False
+                self.page.window.always_on_top = False
+                self.page.update()
+                ScreenColorManager.reset()
+        
+        duration: float = 1
+        if play_sfx and self.audio_manager:
+            sfx_list: list[str] = [Assets.audio.sfx.jump]
+            sfx_list.extend([Assets.audio.sfx.get_scream(i+1) for i in range(8)])
+            sfx = self.audio_manager.play_sfx(random.choice(sfx_list))
+            if sfx:
+                sfx.on_state_change = on_state_change
+                sfx_duration = await sfx.get_duration()
+                if sfx_duration: duration = round(sfx_duration.in_milliseconds / 1000, 3)
+        
+        if self.events: await self.events.random_screen_effect_smooth(duration)
+        if self.events: await self.events.trigger_z_flicker(random.randint(3, 7))
     
     def match_event(self, app_type: AppType) -> None:
         if self.events is None:
@@ -330,6 +344,10 @@ class App:
                 if self.events.applied_filter:
                     ScreenColorManager.reset()
                     self.page.show_dialog(SimpleNotification("Lemme fix that for you :)"))
+                if self.audio_manager and self.playing_music:
+                    if self.audio_manager.music_instance:
+                        self.page.run_task(self.audio_manager.music_instance.pause)
+                self.page.run_task(self.show_jumpscare)
             
             case AppType.DISTRACTING:
                 if (
@@ -337,6 +355,16 @@ class App:
                     self.distraction_time < 20 or
                     random.random() > 0.5
                 ): return
+                
+                def on_state_change(e: fta.AudioStateChangeEvent) -> None:
+                    if e.state == fta.AudioState.COMPLETED:
+                        self.playing_music = False
+                
+                if self.audio_manager and not self.playing_music:
+                    self.audio_manager.play_music(Assets.audio.music.blackwall)
+                    self.playing_music = True
+                    if self.audio_manager.music_instance:
+                        self.audio_manager.music_instance.on_state_change = on_state_change
                 
                 if self.intensity == 1 and self.distraction_time >= 30 and self.intensity != 2:
                     self.intensity = 2
@@ -361,14 +389,10 @@ class App:
                     self.intensity = 3
                     
                 none_events = [
-                    (self.narrator.trigger_interrogation if self.narrator else None),
-                    (self.audio_manager.play_sfx(Assets.audio.sfx.knock_left) if self.audio_manager else None),
-                    (self.audio_manager.play_sfx(Assets.audio.sfx.knock_right) if self.audio_manager else None),
-                    (self.audio_manager.play_sfx(Assets.audio.sfx.discord_ping) if self.audio_manager else None),
-                    (self.audio_manager.play_sfx(Assets.audio.sfx.lightning) if self.audio_manager else None)
+                    (self.narrator.trigger_interrogation if self.narrator else lambda: None)
                 ]
                 while len(none_events) > 0:
-                    try: none_events.remove(None)
+                    try: none_events.remove(lambda: None)
                     except ValueError: break
                 if len(none_events) == 0: none_events = None
                 

@@ -2,27 +2,24 @@ from dataclasses import dataclass
 
 # | Images |
 @dataclass
-class Scares:
-    wo: str = "images/wo.png"
-    mm: str = "images/mm.png"
-
-@dataclass
 class Images:
-    scares = Scares()
     cake: str = "images/bday_cake.png"
+    blackwall: str = "images/thing.png"
+    blackwall_2: str = "images/thong.png"
 
 
 # | Audio |
 @dataclass
 class Music:
-    pass
+    blackwall: str = "audio/music/ambience.mp3"
 
 @dataclass
 class SFX:
-    lightning: str = "audio/sfx/lightning.mp3"
-    knock_left: str = "audio/sfx/knock_left.mp3"
-    knock_right: str = "audio/sfx/knock_right.mp3"
-    discord_ping: str = "audio/sfx/discord_ping.mp3"
+    jump: str = "audio/sfx/jump.mp3"
+    screams: str = "audio/sfx/screams.mp3"
+    
+    def get_scream(self, index: int) -> str:
+        return f"audio/sfx/scream_{index}.mp3"
 
 @dataclass
 class Audio:
