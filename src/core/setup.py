@@ -3,7 +3,7 @@ from typing import Optional, TypeAlias, Callable
 
 OptionalCallableKeyboardEvent: TypeAlias = Optional[Callable[[ft.KeyboardEvent], None]]
 
-WINDOW_WIDTH: Optional[ft.Number] = 550
+WINDOW_WIDTH: Optional[ft.Number] = 600
 WINDOW_HEIGHT: Optional[ft.Number] = 400
 
 def setup_page(page: ft.Page, title: str = "The Overseer", *, add_debug_hooks: bool = True):

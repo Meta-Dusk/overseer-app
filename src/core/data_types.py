@@ -38,3 +38,5 @@ class EventsConfig:
     productive_frequency: int = 10
     idle_chance: float = 0.5
     distracted_chance: float = 0.5
+    idle_events_start: int = 30
+    distracted_events_start: int = 20

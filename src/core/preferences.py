@@ -4,7 +4,7 @@ from typing import Optional, Literal, TypeAlias
 
 AvailablePrefKeys: TypeAlias = Literal[
     "idle_freq", "dist_freq", "prod_freq", "idle_chance", "dist_chance",
-    "sfx_volume", "music_volume"
+    "sfx_volume", "music_volume", "dist_events_start", "idle_events_start"
 ]
 PrefsKeys: TypeAlias = AvailablePrefKeys | str
 

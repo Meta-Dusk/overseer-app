@@ -55,7 +55,7 @@ class DesktopManager:
 
         try:
             with open(file_path, "w", encoding="utf-8") as f:
-                f.write("STATUS: MONITORING SYSTEM...")
+                f.write("...")
             
             cls.set_read_only(str(file_path))
             os.startfile(file_path)

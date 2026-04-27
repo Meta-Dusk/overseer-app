@@ -23,6 +23,7 @@ from managers.narrator import NativeNarrator
 from managers.audio import AudioManager
 from utilities.screen_color import ScreenColorManager
 from utilities.desktop import DesktopManager
+from utilities.window_effects import WindowEffectsManager
 
 class App:
     def __init__(self, page: ft.Page) -> None:
@@ -50,8 +51,9 @@ class App:
         self.narrator = None
         self.audio_manager = None
         self.prefs = Preferences()
+        self.window_effects = None
         
-        app_log("[App] App class instantiated.")
+        app_log("[App] App class instantiated.", LogType.GOOD)
     
     # | Properties |
     @property
@@ -71,6 +73,8 @@ class App:
         await self.prefs.set("dist_freq", self.events_config.distracted_frequency)
         await self.prefs.set("dist_chance", self.events_config.distracted_chance)
         await self.prefs.set("prod_freq", self.events_config.productive_frequency)
+        await self.prefs.set("idle_events_start", self.events_config.idle_events_start)
+        await self.prefs.set("dist_events_start", self.events_config.distracted_events_start)
         
         if self.audio_manager:
             await self.prefs.set("music_volume", self.audio_manager.music_volume)
@@ -117,6 +121,14 @@ class App:
         if sfx_vol and isinstance(sfx_vol, float) and self.audio_manager:
             self.audio_manager.sfx_volume = sfx_vol
         else: await self.prefs.set("sfx_volume", 1.0)
+        
+        idle_events_start = await self.prefs.get("idle_events_start")
+        if idle_events_start and isinstance(idle_events_start, int):
+            self.events_config.idle_events_start = idle_events_start
+        
+        dist_events_start = await self.prefs.get("dist_events_start")
+        if dist_events_start and isinstance(dist_events_start, int):
+            self.events_config.distracted_events_start = dist_events_start
     
     async def setup(self) -> bool:
         try:
@@ -137,14 +149,15 @@ class App:
             self.events = EventsManager(self.page, app_title=self.title)
             self.narrator = NativeNarrator(self.page)
             self.audio_manager = AudioManager(self.page, music_volume=1.0, sfx_volume=1.0)
+            self.window_effects = WindowEffectsManager(self.page)
             
             app_log("[App] Getting saved preferences...")
             await self.get_configs()
             
             if ScreenColorManager.initialize():
-                app_log("[App] ScreenColorManager initialized!")
+                app_log("[App] ScreenColorManager initialized!", LogType.GOOD)
             else:
-                app_log("[App] ScreenColorManager failed to initialize!")
+                app_log("[App] ScreenColorManager failed to initialize!", LogType.WARNING)
             
             app_log("[App] Checking app integrity...")
             await check_app_integrity(
@@ -155,7 +168,7 @@ class App:
         except Exception as e:
             app_log(f"[App] There was an error running 'setup()': {str(e)}", LogType.WARNING)
             return False
-        app_log(f"[App] Finished App.setup()")
+        app_log(f"[App] Finished App.setup()", LogType.GOOD)
         return True
     
     async def build(self) -> bool:
@@ -224,11 +237,19 @@ class App:
                 ],
                 size=16, color=ft.Colors.PRIMARY
             )
+            self.idle_counter_text = ft.Text(
+                spans=[
+                    ft.TextSpan("You Were Idle for: "),
+                    ft.TextSpan(format_time_str(self.idle_time))
+                ],
+                size=16, color=ft.Colors.SECONDARY
+            )
             
             # | Layouts |
             form_controls = [
                 self.distractions_counter_text,
                 self.productive_counter_text,
+                self.idle_counter_text,
                 ft.Divider(height=16),
                 ft.Text("Current Window:", size=16),
                 self.current_app_col,
@@ -258,7 +279,7 @@ class App:
         except Exception as e:
             app_log(f"[App] Error attempting App.build(): {str(e)}", LogType.WARNING)
             return False
-        app_log(f"[App] Finished App.build()")
+        app_log(f"[App] Finished App.build()", LogType.GOOD)
         return True
     
     # | Event Handlers |
@@ -326,9 +347,6 @@ class App:
     
     # | Events |
     async def show_settings(self, _: UnusedEvent) -> None:
-        def on_confirm(_: UnusedEvent) -> None:
-            self.page.pop_dialog()
-        
         sfx_volume = await self.prefs.get("sfx_volume")
         if sfx_volume is None: sfx_volume = 1.0
         sfx_volume = cast(float, sfx_volume)
@@ -345,6 +363,10 @@ class App:
         if idle_chance is None: idle_chance = 0.5
         idle_chance = cast(float, idle_chance)
         
+        idle_events_start = await self.prefs.get("idle_events_start")
+        if idle_events_start is None: idle_events_start = 30
+        idle_events_start = cast(int, idle_events_start)
+        
         dist_freq = await self.prefs.get("dist_freq")
         if dist_freq is None: dist_freq = 1
         dist_freq = cast(int, dist_freq)
@@ -352,6 +374,10 @@ class App:
         dist_chance = await self.prefs.get("dist_chance")
         if dist_chance is None: dist_chance = 0.5
         dist_chance = cast(float, dist_chance)
+        
+        dist_events_start = await self.prefs.get("dist_events_start")
+        if dist_events_start is None: dist_events_start = 20
+        dist_events_start = cast(int, dist_events_start)
         
         prod_freq = await self.prefs.get("prod_freq")
         if prod_freq is None: prod_freq = 1
@@ -361,31 +387,31 @@ class App:
             if not e.data: return
             data: float = e.data
             await self.prefs.set("sfx_volume", round(data, 2))
-            e.control.label = str(data)
+            e.control.label = f"{int(data*100)}%"
             e.control.update()
         
         async def music_on_change(e: ft.Event[ft.Slider]) -> None:
             if not e.data: return
             data: float = e.data
             await self.prefs.set("music_volume", round(data, 2))
-            e.control.label = str(data)
+            e.control.label = f"{int(data*100)}%"
             e.control.update()
         
         def idle_freq_on_change(e: ft.Event[ft.Slider]) -> None:
             if not e.data: return
             data: float = e.data
-            e.control.label = f"Every {data:.2f}s"
+            e.control.label = f"Every {int(data)}s"
             e.control.update()
         
         async def idle_freq_on_change_end(e: ft.Event[ft.Slider]) -> None:
             if not e.data: return
             data: float = e.data
-            await self.prefs.set("idle_freq", round(data, 2))
+            await self.prefs.set("idle_freq", int(data))
         
         def idle_chance_on_change(e: ft.Event[ft.Slider]) -> None:
             if not e.data: return
             data: float = e.data
-            e.control.label = f"{data:.2f}%"
+            e.control.label = f"{int(data * 100)}%"
             e.control.update()
         
         async def idle_chance_on_change_end(e: ft.Event[ft.Slider]) -> None:
@@ -393,21 +419,32 @@ class App:
             data: float = e.data
             await self.prefs.set("idle_chance", round(data, 2))
         
+        def idle_events_start_on_change(e: ft.Event[ft.Slider]) -> None:
+            if not e.data: return
+            data: float = e.data
+            e.control.label = f"Starts after {int(data)}s"
+            e.control.update()
+        
+        async def idle_events_start_on_change_end(e: ft.Event[ft.Slider]) -> None:
+            if not e.data: return
+            data: float = e.data
+            await self.prefs.set("idle_events_start", int(data))
+        
         def dist_freq_on_change(e: ft.Event[ft.Slider]) -> None:
             if not e.data: return
             data: float = e.data
-            e.control.label = f"Every {data:.2f}s"
+            e.control.label = f"Every {int(data)}s"
             e.control.update()
         
         async def dist_freq_on_change_end(e: ft.Event[ft.Slider]) -> None:
             if not e.data: return
             data: float = e.data
-            await self.prefs.set("dist_freq", round(data, 2))
+            await self.prefs.set("dist_freq", int(data))
         
         def dist_chance_on_change(e: ft.Event[ft.Slider]) -> None:
             if not e.data: return
             data: float = e.data
-            e.control.label = f"{data:.2f}%"
+            e.control.label = f"{int(data * 100)}%"
             e.control.update()
         
         async def dist_chance_on_change_end(e: ft.Event[ft.Slider]) -> None:
@@ -415,21 +452,42 @@ class App:
             data: float = e.data
             await self.prefs.set("dist_chance", round(data, 2))
         
+        def dist_events_start_on_change(e: ft.Event[ft.Slider]) -> None:
+            if not e.data: return
+            data: float = e.data
+            e.control.label = f"Starts after {int(data)}s"
+            e.control.update()
+        
+        async def dist_events_start_on_change_end(e: ft.Event[ft.Slider]) -> None:
+            if not e.data: return
+            data: float = e.data
+            await self.prefs.set("dist_events_start", int(data))
+        
         def prod_freq_on_change(e: ft.Event[ft.Slider]) -> None:
             if not e.data: return
             data: float = e.data
-            e.control.label = f"Every {data:.2f}s"
+            e.control.label = f"Every {int(data)}s"
             e.control.update()
         
         async def prod_freq_on_change_end(e: ft.Event[ft.Slider]) -> None:
             if not e.data: return
             data: float = e.data
-            await self.prefs.set("prod_freq", round(data, 2))
+            await self.prefs.set("prod_freq", int(data))
         
         async def on_reset(_: UnusedEvent) -> None:
             self.page.pop_dialog()
             await self.reset_configs()
-            self.page.update()
+        
+        async def clear_prefs(_: UnusedEvent) -> None:
+            self.page.pop_dialog()
+            if await self.prefs.clear():
+                self.page.show_dialog(SimpleNotification("Cleared all preferences!"))
+            else:
+                self.page.show_dialog(ErrorNotification("Failed to clear preferences!"))
+        
+        async def on_confirm(_: UnusedEvent) -> None:
+            self.page.pop_dialog()
+            # await self.save_configs()
         
         sfx_slider = ft.Slider(
             value=sfx_volume, on_change=sfx_on_change,
@@ -443,12 +501,17 @@ class App:
         idle_freq_slider = ft.Slider(
             value=idle_freq, on_change=idle_freq_on_change,
             on_change_end=idle_freq_on_change_end,
-            divisions=61, min=1, max=60, label=f"Every {idle_freq}s"
+            divisions=59, min=1, max=60, label=f"Every {idle_freq}s"
         )
         idle_chance_slider = ft.Slider(
             value=idle_chance, on_change=idle_chance_on_change,
             on_change_end=idle_chance_on_change_end,
             divisions=100, label=f"{idle_chance}%"
+        )
+        idle_events_slider = ft.Slider(
+            value=idle_events_start, on_change=idle_events_start_on_change,
+            on_change_end=idle_events_start_on_change_end,
+            divisions=59, min=1, max=60, label=f"Starts after {idle_events_start}s"
         )
     
         dist_freq_slider = ft.Slider(
@@ -461,13 +524,18 @@ class App:
             on_change_end=dist_chance_on_change_end,
             divisions=100, label=f"{dist_chance}%"
         )
+        dist_events_slider = ft.Slider(
+            value=dist_events_start, on_change=dist_events_start_on_change,
+            on_change_end=dist_events_start_on_change_end,
+            divisions=59, min=1, max=60, label=f"Starts after {dist_events_start}s"
+        )
     
         prod_freq_slider = ft.Slider(
             value=prod_freq, on_change=prod_freq_on_change,
             on_change_end=prod_freq_on_change_end,
-            divisions=61, min=1, max=60, label=f"Every {prod_freq}s"
+            divisions=61, min=1, max=60, label=f"Every {prod_freq}s",
         )
-    
+        
         dlg = ft.AlertDialog(
             title="Events Settings", modal=True,
             content=CenteredColumn(
@@ -482,20 +550,26 @@ class App:
                     idle_freq_slider,
                     ft.Text("Idle Events Chance", margin=ft.Margin.only(top=8)),
                     idle_chance_slider,
+                    ft.Text("Idle Events Start", margin=ft.Margin.only(top=8)),
+                    idle_events_slider,
+                    ft.Divider(),
                     ft.Text("Distraction Events Frequency", margin=ft.Margin.only(top=8)),
                     dist_freq_slider,
+                    ft.Text("Distraction Events Start", margin=ft.Margin.only(top=8)),
+                    dist_events_slider,
                     ft.Text("Distraction Events Chance", margin=ft.Margin.only(top=8)),
                     dist_chance_slider,
+                    ft.Divider(),
                     ft.Text("Productive Events Frequency", margin=ft.Margin.only(top=8)),
                     prod_freq_slider,
                     ft.Divider(),
-                    ft.Button("Reset Settings", on_click=on_reset)
                 ],
                 scroll=ft.ScrollMode.ALWAYS
             ),
             actions=[
-                ft.Button("Confirm", on_click=on_confirm),
-                ft.Button("Cancel", on_click=lambda e: e.page.pop_dialog())
+                ft.Button("Confirm Changes", on_click=on_confirm),
+                ft.Button("Reset Values", on_click=on_reset),
+                ft.Button("Clear Prefs", on_click=clear_prefs)
             ],
             expand=True
         )
@@ -539,6 +613,9 @@ class App:
         self, image_path: Optional[str] = None, *,
         play_sfx: bool = True,
     ) -> None:
+        while self.page.pop_dialog() is not None:
+            await asyncio.sleep(0.1)
+        
         path = image_path if image_path else random.choice([
             Assets.images.blackwall,
             Assets.images.blackwall_2,
@@ -550,7 +627,10 @@ class App:
         self.page.decoration = None
         self.page.controls.clear()
         self.page.add(
-            ft.Image(path, fit=ft.BoxFit.FILL, expand=True, margin=0)
+            ft.Image(
+                path, fit=ft.BoxFit.FILL, expand=True, margin=0,
+                repeat=ft.ImageRepeat.REPEAT, gapless_playback=True
+            )
         )
         self.page.window.maximized = True
         self.page.window.always_on_top = True
@@ -568,6 +648,7 @@ class App:
                 self.page.window.maximized = False
                 self.page.window.always_on_top = False
                 self.page.update()
+                if self.events: self.events.applied_filter = False
                 ScreenColorManager.reset()
         
         duration: float = 1
@@ -583,73 +664,96 @@ class App:
         if self.events: await self.events.random_screen_effect_smooth(duration)
         if self.events: await self.events.trigger_z_flicker(random.randint(3, 7))
     
+    async def pull_mouse_then_shake(self) -> None:
+        if self.events is None: return
+        if not self.events.pull_mouse_to_app(self.title): return
+        if self.window_effects is None: return
+        await self.window_effects.trigger_screen_shake(
+            duration=(random.random() + 0.1) * 2,
+            intensity=random.randint(10, 50)
+        )
+    
+    async def flicker_flicker(self) -> None:
+        """Triggers two kinds of flickers."""
+        if self.events is None: return
+        self.page.run_task(self.events.random_screen_flicker)
+        await self.events.trigger_z_flicker(random.randint(5, 10))
+    
     def match_event(self, app_type: AppType) -> None:
         if self.events is None:
-            app_log("[App] Missing EventsManager!")
+            app_log("[App] Missing EventsManager!", LogType.WARNING)
             return
         
+        chance = random.random()
+        coro_events = [self.show_jumpscare, self.pull_mouse_then_shake, self.flicker_flicker]
+        config = self.events_config
+
         match app_type:
             case AppType.PRODUCTIVE:
-                if self.productive_time % self.events_config.productive_frequency: return
-                if self.events.applied_filter:
-                    ScreenColorManager.reset()
-                    self.page.show_dialog(SimpleNotification("Lemme fix that for you :)"))
-                if self.audio_manager and self.playing_music:
-                    if self.audio_manager.music_instance:
-                        self.page.run_task(self.audio_manager.music_instance.pause)
+                # Check Frequency
+                if self.productive_time % config.productive_frequency == 0:
+                    if self.events.applied_filter:
+                        ScreenColorManager.reset()
+                        self.page.show_dialog(SimpleNotification("Lemme fix that for you :)"))
+                    
+                    if self.audio_manager and self.playing_music:
+                        if self.audio_manager.music_instance:
+                            self.page.run_task(self.audio_manager.music_instance.pause)
             
             case AppType.DISTRACTING:
-                if (
-                    self.distraction_time % self.events_config.distracted_frequency or
-                    self.distraction_time < 20 or
-                    random.random() < self.events_config.distracted_chance
-                ): return
-                
-                def on_state_change(e: fta.AudioStateChangeEvent) -> None:
-                    if e.state == fta.AudioState.COMPLETED:
-                        self.playing_music = False
-                
-                if self.audio_manager and not self.playing_music:
-                    self.audio_manager.play_music(Assets.audio.music.blackwall)
-                    self.playing_music = True
-                    if self.audio_manager.music_instance:
-                        self.audio_manager.music_instance.on_state_change = on_state_change
-                
-                if self.intensity == 1 and self.distraction_time >= 30 and self.intensity != 2:
-                    self.intensity = 2
-                elif self.intensity == 2 and self.distraction_time >= 60 and self.intensity != 3:
-                    self.intensity = 3
+                # Check Frequency and Start Threshold
+                if (self.distraction_time % config.distracted_frequency == 0 and 
+                    self.distraction_time >= config.distracted_events_start):
                     
-                self.page.run_task(
-                    self.events.trigger_random_event, self.intensity,
-                    new_none_coro_events=[self.show_jumpscare]
-                )
+                    # Check Chance (1.0 bypasses the RNG check)
+                    if config.distracted_chance >= 1.0 or chance <= config.distracted_chance:
+                        self._handle_distraction_logic(coro_events)
             
             case AppType.NEUTRAL | _:
-                if (
-                    self.idle_time % self.events_config.idle_frequency or
-                    self.idle_time < 30 or
-                    random.random() < self.events_config.idle_chance
-                ): return
-                
-                if self.intensity == 1 and self.idle_time >= 60 and self.intensity != 2:
-                    self.intensity = 2
-                elif self.intensity == 2 and self.idle_time >= 120 and self.intensity != 3:
-                    self.intensity = 3
+                # Check Frequency and Start Threshold
+                if (self.idle_time % config.idle_frequency == 0 and 
+                    self.idle_time >= config.idle_events_start):
                     
-                none_events = [
-                    (self.narrator.trigger_interrogation if self.narrator else lambda: None)
-                ]
-                while len(none_events) > 0:
-                    try: none_events.remove(lambda: None)
-                    except ValueError: break
-                if len(none_events) == 0: none_events = None
-                
-                self.page.run_task(
-                    self.events.trigger_random_event, self.intensity,
-                    new_none_events=none_events,
-                    new_none_coro_events=[self.show_jumpscare]
-                )
+                    # Check Chance
+                    if config.idle_chance >= 1.0 or chance <= config.idle_chance:
+                        self._handle_idle_logic(coro_events)
+
+    def _handle_distraction_logic(self, coro_events):
+        """Internal helper for distraction event triggers."""
+        # Update Intensity
+        if self.distraction_time >= 60: self.intensity = 3
+        elif self.distraction_time >= 30: self.intensity = 2
+        
+        # Audio Management
+        if self.audio_manager and not self.playing_music:
+            self.audio_manager.play_music(Assets.audio.music.blackwall)
+            self.playing_music = True
+        
+        if self.events is None: return
+        time_value = format_time_str(self.distraction_time)
+        app_log(f"[App] Distraction event triggered at {time_value}s")
+        self.page.run_task(
+            self.events.trigger_random_event, self.intensity,
+            new_none_coro_events=coro_events
+        )
+
+    def _handle_idle_logic(self, coro_events):
+        """Internal helper for idle/neutral event triggers."""
+        if self.idle_time >= 120: self.intensity = 3
+        elif self.idle_time >= 60: self.intensity = 2
+            
+        none_events = []
+        if self.narrator:
+            none_events.append(self.narrator.trigger_interrogation)
+        
+        if self.events is None: return
+        time_value = format_time_str(self.idle_time)
+        app_log(f"[App] Idle event triggered at {time_value}s")
+        self.page.run_task(
+            self.events.trigger_random_event, self.intensity,
+            new_none_events=none_events if none_events else None,
+            new_none_coro_events=coro_events
+        )
     
     async def match_app_type(self, app_type: AppType) -> None:
         """Event handler for detected window type from monitor task."""
@@ -685,12 +789,16 @@ class App:
                 
             case AppType.NEUTRAL | _:
                 self.idle_time += 1
-                time_value = format_time_str(self.idle_time)
                 
                 if self.page.window.always_on_top:
                     self.page.window.always_on_top = False
                     self.page.window.update()
-                print(f"[App] Incremented idle_time to: {time_value}")
+                
+                if self.idle_counter_text.spans and len(self.idle_counter_text.spans) > 0:
+                    time_value = format_time_str(self.idle_time)
+                    self.idle_counter_text.spans[1].text = time_value
+                    try_update(self.idle_counter_text)
+                    print(f"[App] Incremented idle_time to: {time_value}")
         
         self.match_event(app_type)
         await safe_sleep(1, self.stop_event)
@@ -727,4 +835,4 @@ class App:
                 )
                 try_update(self.category_text, self.current_app_col)
             await self.match_app_type(category)
-        app_log("[App] Monitor task stopped.")
+        app_log("[App] Monitor task stopped.", LogType.GOOD)
