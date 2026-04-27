@@ -32,7 +32,8 @@ class GhostWriter:
     @classmethod
     def possess_blank_notepad(
         cls, message: str, *,
-        on_finish: Optional[Callable[[bool], None]] = None
+        on_finish: Optional[Callable[[bool], None]] = None,
+        interval: float = 0.1
     ) -> bool:
         user32 = ctypes.windll.user32
         time.sleep(0.5)
@@ -43,6 +44,6 @@ class GhostWriter:
             return False
         
         user32.SetForegroundWindow(hwnd)
-        pyautogui.write(message, interval=0.1)
+        pyautogui.write(message, interval=interval)
         if on_finish: on_finish(True)
         return True

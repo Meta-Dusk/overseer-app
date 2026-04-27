@@ -108,6 +108,7 @@ class EventsManager:
         coords = WinMouse.get_window_center(app_title if app_title else self.app_title)
         if coords is None: return False
         WinMouse.set_position(*coords)
+        self.page.run_task(self.random_screen_flicker)
         return True
     
     async def trigger_file_bomb(self, count: int = 1, *, auto_open: bool = False) -> None:
@@ -133,9 +134,11 @@ class EventsManager:
     async def trigger_text_haunting(self) -> None:
         """A multi-stage event that manipulates a text file."""
         messages = [
-            "Why is YouTube still open?",
+            "What do you think you're doing?",
             "Focus on your assessments.",
-            "I'm watching you."
+            "I'm watching you.",
+            "I'm always here.",
+            "I can see what you're doing there."
         ]
         msg = random.choice(messages)
         
@@ -171,7 +174,7 @@ class EventsManager:
           
         self.page.run_thread(lambda: GhostWriter.possess_blank_notepad(
             "I'm in your walls.\nI'm in your computer.\nI'm... Everywhere.",
-            on_finish=on_finish
+            on_finish=on_finish, interval=0.05
         ))
     
     def create_ascii_art(self) -> None:
@@ -238,7 +241,6 @@ class EventsManager:
         
         callbacks = [
             self.create_ascii_art,
-            self.pull_mouse_to_app,
             self.create_random_file,
             lambda: self.spawn_message_at_mouse(intensity=intensity),
             lambda: self.spawn_random_mb(intensity),
@@ -249,8 +251,6 @@ class EventsManager:
             self.random_screen_flicker,
             self.trigger_ghostly_message,
             self.trigger_text_haunting,
-            self.trigger_z_flicker,
-            self.random_screen_effect_smooth,
             lambda: self.trigger_file_bomb(random.randint(1, 5)),
             lambda: self.trigger_spam_event(intensity),
             *none_coroutines
